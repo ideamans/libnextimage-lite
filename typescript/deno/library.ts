@@ -109,11 +109,12 @@ export function clearLibraryPathCache(): void {
 export function getLibraryVersion(): string {
   try {
     const moduleDir = dirname(fromFileUrl(import.meta.url))
-    const versionFilePath = join(moduleDir, '..', 'library-version.json')
+    // Read version from parent package.json
+    const packagePath = join(moduleDir, '..', 'package.json')
 
-    if (existsSync(versionFilePath)) {
-      const config = JSON.parse(Deno.readTextFileSync(versionFilePath))
-      return config.version
+    if (existsSync(packagePath)) {
+      const packageJson = JSON.parse(Deno.readTextFileSync(packagePath))
+      return packageJson.version
     }
   } catch (_error) {
     // Ignore errors

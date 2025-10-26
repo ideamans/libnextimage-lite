@@ -12,7 +12,7 @@
     "test": "npm run test:basic && npm run test:batch && npm run test:decode && npm run test:all"
   },
   "dependencies": {
-    "libnextimage": "^0.5.0"
+    "libnextimage": "file:../../typescript"
   },
   "engines": {
     "node": ">=18.0.0"

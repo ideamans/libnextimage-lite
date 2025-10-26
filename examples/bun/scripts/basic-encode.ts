@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
 import { join } from 'path'
-import { WebPEncoder, getLibraryVersion } from '../../typescript/bun/mod.ts'
+import { WebPEncoder, getLibraryVersion } from 'libnextimage/bun/mod.ts'
 
 console.log('=== libnextimage Bun E2E Test: Basic Encode ===\n')
 console.log(`Library version: ${getLibraryVersion()}\n`)

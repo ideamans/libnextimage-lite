@@ -6,11 +6,11 @@ all: install test
 # Install dependencies
 install:
 	@echo "Installing Bun dependencies..."
-	@# Build the TypeScript package first
-	@cd ../../typescript && npm run build
-	@# Pack the package
-	@cd ../../typescript && npm pack && mv libnextimage-*.tgz ../examples/bun/ideamans-libnextimage-0.4.0.tgz
-	@# Install in examples
+	@echo "Checking for Bun..."
+	@command -v bun >/dev/null 2>&1 || { echo "Error: Bun is not installed. Please install Bun from https://bun.sh"; exit 1; }
+	@echo "Building TypeScript package..."
+	@cd ../../typescript && npm install && npm run build
+	@echo "Installing local dependencies..."
 	@bun install
 	@echo "✓ Installation complete"
 
@@ -29,9 +29,7 @@ test-basic:
 clean:
 	@echo "Cleaning up..."
 	@rm -rf node_modules
-	@rm -f bun.lock
-	@rm -f ideamans-libnextimage-*.tgz
-	@rm -f libnextimage-*.tgz
+	@rm -f bun.lockb
 	@rm -rf output
 	@echo "✓ Cleanup complete"
 

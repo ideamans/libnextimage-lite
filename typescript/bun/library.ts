@@ -111,11 +111,12 @@ export function getLibraryVersion(): string {
   try {
     const currentFile = fileURLToPath(import.meta.url)
     const moduleDir = path.dirname(currentFile)
-    const versionFilePath = path.join(moduleDir, '..', 'library-version.json')
+    // Read version from parent package.json
+    const packagePath = path.join(moduleDir, '..', 'package.json')
 
-    if (fs.existsSync(versionFilePath)) {
-      const config = JSON.parse(fs.readFileSync(versionFilePath, 'utf8'))
-      return config.version
+    if (fs.existsSync(packagePath)) {
+      const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'))
+      return packageJson.version
     }
   } catch (_error) {
     // Ignore errors

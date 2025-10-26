@@ -6,11 +6,9 @@ all: install test
 # Install dependencies
 install:
 	@echo "Installing Node.js dependencies..."
-	@# Build the TypeScript package first
-	@cd ../../typescript && npm run build
-	@# Pack the package
-	@cd ../../typescript && npm pack && mv libnextimage-*.tgz ../examples/nodejs/libnextimage-0.4.0.tgz
-	@# Install in examples
+	@echo "Building TypeScript package..."
+	@cd ../../typescript && npm install && npm run build
+	@echo "Installing local dependencies..."
 	@npm install
 	@echo "✓ Installation complete"
 
@@ -48,8 +46,6 @@ clean:
 	@echo "Cleaning up..."
 	@rm -rf node_modules
 	@rm -f package-lock.json
-	@rm -f libnextimage-*.tgz
-	@rm -f ideamans-libnextimage-*.tgz
 	@rm -rf output
 	@echo "✓ Cleanup complete"
 

@@ -10,25 +10,28 @@ import * as fs from 'fs';
  * @returns Library version string (e.g., "0.4.0")
  */
 export function getLibraryVersion(): string {
-  try {
-    // Try to read from the installed location (dist/../library-version.json)
-    const versionFilePath = path.join(__dirname, '..', '..', 'library-version.json');
-    if (fs.existsSync(versionFilePath)) {
-      const config = JSON.parse(fs.readFileSync(versionFilePath, 'utf8'));
-      return config.version;
+  // Try multiple possible locations for package.json
+  const possiblePaths = [
+    // When built and installed: dist/library.js -> ../package.json
+    path.join(__dirname, '..', 'package.json'),
+    // When in development with file: dependency
+    path.join(__dirname, '..', '..', '..', 'typescript', 'package.json'),
+  ];
+
+  for (const packagePath of possiblePaths) {
+    try {
+      if (fs.existsSync(packagePath)) {
+        const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+        if (packageJson.version && packageJson.name === 'libnextimage') {
+          return packageJson.version;
+        }
+      }
+    } catch (error) {
+      // Continue to next path
     }
-  } catch (error) {
-    // Ignore errors and use fallback
   }
 
-  // Fallback: return package version
-  try {
-    const packagePath = path.join(__dirname, '..', '..', 'package.json');
-    const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
-    return packageJson.version;
-  } catch (error) {
-    return 'unknown';
-  }
+  return 'unknown';
 }
 
 /**
