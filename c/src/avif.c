@@ -957,25 +957,7 @@ void avifenc_free_command(AVIFEncCommand* cmd) {
     }
 }
 
-// stb_image_write用のコールバック - NextImageBufferに追記
-static void stbi_write_to_buffer_callback(void* context, void* data, int size) {
-    NextImageBuffer* buf = (NextImageBuffer*)context;
-
-    // 新しいサイズを計算
-    size_t new_size = buf->size + (size_t)size;
-
-    // バッファを再割り当て
-    uint8_t* new_data = (uint8_t*)realloc(buf->data, new_size);
-    if (!new_data) {
-        // メモリ割り当て失敗 - 現在のバッファは維持
-        return;
-    }
-
-    // データをコピー
-    memcpy(new_data + buf->size, data, (size_t)size);
-    buf->data = new_data;
-    buf->size = new_size;
-}
+// stbi_write_to_buffer_callback は internal.h の nextimage_stbi_write_callback を使用
 
 // AVIFDec実装（NextImageAVIFDecoderを内部で使用）
 struct AVIFDecCommand {
@@ -1070,6 +1052,7 @@ NextImageStatus avifdec_run_command(
     // stb_image_writeはRGB/RGBAのみサポート
     int channels = 0;
     const uint8_t* pixel_data = NULL;
+    uint8_t* converted_data = NULL;  // BGRA変換用の一時バッファ
 
     if (decode_buf.format == NEXTIMAGE_FORMAT_RGBA) {
         channels = 4;
@@ -1079,11 +1062,23 @@ NextImageStatus avifdec_run_command(
         pixel_data = decode_buf.data;
     } else if (decode_buf.format == NEXTIMAGE_FORMAT_BGRA) {
         // BGRAはstb_image_writeでサポートされていないため、
-        // RGBAに変換する必要がある
+        // RGBAに変換する
         channels = 4;
-        // TODO: BGRA→RGBA変換が必要
-        // 現時点ではBGRAをそのまま使用（色順が逆になる可能性あり）
-        pixel_data = decode_buf.data;
+        converted_data = (uint8_t*)nextimage_malloc(decode_buf.data_size);
+        if (!converted_data) {
+            nextimage_free_decode_buffer(&decode_buf);
+            nextimage_set_error("Failed to allocate BGRA conversion buffer");
+            return NEXTIMAGE_ERROR_OUT_OF_MEMORY;
+        }
+
+        // BGRA → RGBA 変換（B と R を入れ替える）
+        for (size_t i = 0; i < decode_buf.data_size; i += 4) {
+            converted_data[i + 0] = decode_buf.data[i + 2]; // R <- B
+            converted_data[i + 1] = decode_buf.data[i + 1]; // G <- G
+            converted_data[i + 2] = decode_buf.data[i + 0]; // B <- R
+            converted_data[i + 3] = decode_buf.data[i + 3]; // A <- A
+        }
+        pixel_data = converted_data;
     } else {
         nextimage_free_decode_buffer(&decode_buf);
         nextimage_set_error("Unsupported pixel format for encoding: %d", decode_buf.format);
@@ -1095,7 +1090,7 @@ NextImageStatus avifdec_run_command(
     if (cmd->output_format == AVIFDEC_OUTPUT_JPEG) {
         // JPEGにエンコード
         result = stbi_write_jpg_to_func(
-            stbi_write_to_buffer_callback,
+            nextimage_stbi_write_callback,
             output,
             decode_buf.width,
             decode_buf.height,
@@ -1106,7 +1101,7 @@ NextImageStatus avifdec_run_command(
     } else {
         // PNGにエンコード（デフォルト）
         result = stbi_write_png_to_func(
-            stbi_write_to_buffer_callback,
+            nextimage_stbi_write_callback,
             output,
             decode_buf.width,
             decode_buf.height,
@@ -1114,6 +1109,11 @@ NextImageStatus avifdec_run_command(
             pixel_data,
             (int)decode_buf.stride
         );
+    }
+
+    // BGRA変換用の一時バッファを解放
+    if (converted_data) {
+        nextimage_free(converted_data);
     }
 
     // デコードバッファを解放

@@ -13,6 +13,9 @@ void nextimage_free(void* ptr);
 // 内部用エラーメッセージ設定
 void nextimage_set_error(const char* format, ...);
 
+// stb_image_write用のバッファコールバック関数
+void nextimage_stbi_write_callback(void* context, void* data, int size);
+
 // デバッグビルド専用
 #ifdef NEXTIMAGE_DEBUG
 void nextimage_increment_alloc_counter(void);

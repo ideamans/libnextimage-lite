@@ -1,0 +1,40 @@
+version: 2
+updates:
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+  # Go modules
+  - package-ecosystem: "gomod"
+    directory: "/golang"
+    schedule:
+      interval: "weekly"
+    groups:
+      golang:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "golang"
+
+  # npm (TypeScript)
+  - package-ecosystem: "npm"
+    directory: "/typescript"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "typescript"

@@ -45,7 +45,7 @@
   "files": [
     "dist",
     "scripts",
-    "library-version.json",
+    "prebuilds",
     "README.md",
     "LICENSE"
   ],

@@ -138,12 +138,12 @@ void* nextimage_realloc(void* ptr, size_t size) {
     void* new_ptr = realloc(ptr, size);
 
     if (new_ptr && !was_allocated) {
-        // 新規割り当て
+        // 新規割り当て (ptr was NULL, now allocated)
         nextimage_increment_alloc_counter();
-    } else if (!new_ptr && was_allocated) {
-        // 解放された
-        nextimage_decrement_alloc_counter();
     }
+    // Note: If realloc fails (new_ptr == NULL), the original ptr is still valid,
+    // so we do NOT decrement the counter. The caller is responsible for
+    // freeing the original pointer in this case.
 
     return new_ptr;
 }
@@ -153,4 +153,22 @@ void nextimage_free(void* ptr) {
         free(ptr);
         nextimage_decrement_alloc_counter();
     }
+}
+
+// stb_image_write用のバッファコールバック関数
+// PNG/JPEG出力時にメモリバッファに書き込むために使用
+void nextimage_stbi_write_callback(void* context, void* data, int size) {
+    NextImageBuffer* buf = (NextImageBuffer*)context;
+    size_t new_size = buf->size + (size_t)size;
+
+    // 追跡対象のreallocを使用
+    uint8_t* new_data = (uint8_t*)nextimage_realloc(buf->data, new_size);
+    if (!new_data) {
+        // メモリ割り当て失敗 - エラーは呼び出し側で検出される
+        return;
+    }
+
+    memcpy(new_data + buf->size, data, (size_t)size);
+    buf->data = new_data;
+    buf->size = new_size;
 }

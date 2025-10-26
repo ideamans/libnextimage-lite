@@ -1,5 +1,9 @@
 name: Update Binaries
 
+# This workflow downloads compiled binaries from GitHub Releases and creates a PR
+# IMPORTANT: Requires PAT_TOKEN secret with 'repo' and 'workflow' scopes
+# to create PRs and trigger workflows. GITHUB_TOKEN has insufficient permissions.
+
 on:
   release:
     types: [published]
@@ -19,7 +23,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Use PAT_TOKEN for creating PRs and triggering workflows
+          # If PAT_TOKEN is not available, falls back to GITHUB_TOKEN (limited permissions)
+          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Set version
         id: version
@@ -39,20 +45,36 @@ jobs:
 
           echo "Downloading artifacts for $TAG..."
 
-          # Download all platform artifacts
+          # Download all platform artifacts with error checking
           PLATFORMS="darwin-arm64 darwin-amd64 linux-amd64 linux-arm64 windows-amd64"
+          FAILED_DOWNLOADS=""
 
           for PLATFORM in $PLATFORMS; do
             # Static library
             STATIC_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/libnextimage-${TAG}-${PLATFORM}.tar.gz"
             echo "Downloading $STATIC_URL"
-            curl -L -f -o "static-${PLATFORM}.tar.gz" "$STATIC_URL" || echo "Warning: Failed to download static for $PLATFORM"
+            if ! curl -L -f -o "static-${PLATFORM}.tar.gz" "$STATIC_URL"; then
+              echo "ERROR: Failed to download static library for $PLATFORM"
+              FAILED_DOWNLOADS="$FAILED_DOWNLOADS static-$PLATFORM"
+            fi
 
             # Shared library
             SHARED_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/libnextimage-shared-${TAG}-${PLATFORM}.tar.gz"
             echo "Downloading $SHARED_URL"
-            curl -L -f -o "shared-${PLATFORM}.tar.gz" "$SHARED_URL" || echo "Warning: Failed to download shared for $PLATFORM"
+            if ! curl -L -f -o "shared-${PLATFORM}.tar.gz" "$SHARED_URL"; then
+              echo "ERROR: Failed to download shared library for $PLATFORM"
+              FAILED_DOWNLOADS="$FAILED_DOWNLOADS shared-$PLATFORM"
+            fi
           done
+
+          # Check if all downloads succeeded
+          if [ -n "$FAILED_DOWNLOADS" ]; then
+            echo "ERROR: Failed to download the following artifacts:$FAILED_DOWNLOADS"
+            echo "Please check that all platform builds completed successfully in the release workflow."
+            exit 1
+          fi
+
+          echo "All artifacts downloaded successfully"
 
       - name: Extract and organize Go binaries
         run: |
