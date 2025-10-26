@@ -3,6 +3,6 @@
     "test:basic": "deno run --allow-read --allow-write --allow-ffi --allow-env scripts/basic-encode.ts"
   },
   "imports": {
-    "@ideamans/libnextimage": "../../typescript/deno/mod.ts"
+    "libnextimage": "../../typescript/deno/mod.ts"
   }
 }

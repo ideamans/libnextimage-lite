@@ -58,7 +58,8 @@ test-batch:
 		exit 1; \
 	fi
 	@go run batch_convert.go ../../testdata/jpeg-source output/batch webp
-	@if [ -f output/batch/*.webp ]; then \
+	@count=$$(ls -1 output/batch/*.webp 2>/dev/null | wc -l); \
+	if [ $$count -gt 0 ]; then \
 		echo "✓ Batch processing test passed"; \
 	else \
 		echo "✗ Batch processing test failed"; \
