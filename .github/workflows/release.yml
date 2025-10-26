@@ -181,4 +181,6 @@ jobs:
           prerelease: false
           generate_release_notes: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Use PAT_TOKEN to trigger the update-binaries workflow
+          # GITHUB_TOKEN cannot trigger other workflows due to GitHub Actions security
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
