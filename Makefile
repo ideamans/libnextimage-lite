@@ -121,22 +121,17 @@ clean-c:
 # Go Package targets
 test-go:
 	@echo "Running Go tests..."
+	@echo "Testing with current binaries in golang/shared/lib/"
 	@cd golang && go test -v -timeout 30s
 
 # TypeScript Package targets
-test-typescript: install-c
+test-typescript:
 	@echo "Running TypeScript tests..."
+	@echo "Testing with current binaries in typescript/lib/"
 	@echo "Checking for Node.js..."
 	@command -v node >/dev/null 2>&1 || { echo "Error: Node.js is not installed. Please install Node.js >= 18.0.0"; exit 1; }
 	@echo "Node.js version: $$(node --version)"
 	@echo ""
-	@echo "Setting up TypeScript environment..."
-	@cd typescript && npm install
-	@echo ""
-	@echo "Building TypeScript project..."
-	@cd typescript && npm run build
-	@echo ""
-	@echo "Running TypeScript tests..."
 	@cd typescript && npm test
 	@echo ""
 	@echo "TypeScript tests completed successfully!"

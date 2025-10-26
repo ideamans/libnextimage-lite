@@ -45,7 +45,7 @@
   "files": [
     "dist",
     "scripts",
-    "prebuilds",
+    "lib",
     "README.md",
     "LICENSE"
   ],

@@ -322,11 +322,6 @@ jobs:
         run: |
           npm install
 
-      - name: Build TypeScript project
-        working-directory: typescript
-        run: |
-          npm run build
-
       - name: Run TypeScript tests
         working-directory: typescript
         run: |

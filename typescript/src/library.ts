@@ -72,33 +72,33 @@ export function getLibraryFileName(): string {
 /**
  * Find the shared library path with fallback chain
  * Looks in the following order:
- * 1. ../../../lib/shared/ (development mode - relative to project root)
- * 2. ../../../lib/<platform>/ (development mode - platform-specific)
+ * 1. ../../lib/shared/ (development mode - relative to project root)
+ * 2. ../../lib/<platform>/ (development mode - platform-specific)
  * 3. ../lib/<platform>/ (installed package)
  *
- * Note: __dirname in compiled code (dist/src/) points to:
- * - Development: <project-root>/typescript/dist/src/
- * - Installed: node_modules/@ideamans/libnextimage/dist/src/
+ * Note: __dirname in compiled code (dist/) points to:
+ * - Development: <project-root>/typescript/dist/
+ * - Installed: node_modules/@ideamans/libnextimage/dist/
  */
 export function findLibraryPath(): string {
   const platform = getPlatform();
   const libFileName = getLibraryFileName();
 
   // Priority 1: Development mode - shared build
-  // __dirname = typescript/dist/src/, so ../../../ goes to project root
-  const devSharedPath = path.join(__dirname, '..', '..', '..', 'lib', 'shared', libFileName);
+  // __dirname = typescript/dist/, so ../../ goes to project root
+  const devSharedPath = path.join(__dirname, '..', '..', 'lib', 'shared', libFileName);
   if (fs.existsSync(devSharedPath)) {
     return devSharedPath;
   }
 
   // Priority 2: Development mode - platform-specific build
-  const devPlatformPath = path.join(__dirname, '..', '..', '..', 'lib', platform, libFileName);
+  const devPlatformPath = path.join(__dirname, '..', '..', 'lib', platform, libFileName);
   if (fs.existsSync(devPlatformPath)) {
     return devPlatformPath;
   }
 
   // Priority 3: Installed package
-  // __dirname = node_modules/@ideamans/libnextimage/dist/
+  // __dirname = dist/, so ../ = package root
   const installedPath = path.join(__dirname, '..', 'lib', platform, libFileName);
   if (fs.existsSync(installedPath)) {
     return installedPath;
