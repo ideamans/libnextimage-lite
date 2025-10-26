@@ -87,10 +87,14 @@ const symbols = {
     result: 'void'
   },
 
-  // Error handling
-  nextimage_get_last_error: {
-    parameters: [],
-    result: 'pointer'
+  // Options helpers
+  nextimage_webp_default_encode_options: {
+    parameters: ['pointer'],
+    result: 'void'
+  },
+  nextimage_avif_default_encode_options: {
+    parameters: ['pointer'],
+    result: 'void'
   }
 } as const
 
@@ -193,10 +197,76 @@ export function copyFromCMemory(ptr: Deno.PointerValue, size: number): Uint8Arra
 }
 
 /**
- * Get the last error message from the C library
+ * Create a WebP encode options struct and initialize with defaults
  */
-export function getLastError(): string {
+export function createWebPOptionsStruct(): { pointer: Deno.PointerValue; view: DataView } {
+  // Based on NextImageWebPEncodeOptions struct - approximately 40 int fields + 2 floats
+  // Size estimate: 40 * 4 (int) + 2 * 4 (float) = 168 bytes, round up to 256 for safety
+  const buffer = new ArrayBuffer(256)
+  const view = new DataView(buffer)
+  const pointer = Deno.UnsafePointer.of(buffer)
+
+  // Initialize with default values
   const lib = getLibrary()
-  const errorPtr = lib.symbols.nextimage_get_last_error()
-  return readCString(errorPtr)
+  lib.symbols.nextimage_webp_default_encode_options(pointer)
+
+  return { pointer, view }
 }
+
+/**
+ * Read WebP options from struct DataView
+ */
+export function readWebPOptionsStruct(view: DataView): {
+  quality: number
+  lossless: number
+  method: number
+  preset: number
+  image_hint: number
+  exact: number
+} {
+  // Field offsets based on NextImageWebPEncodeOptions struct
+  // float quality, int lossless, int method, int preset, int image_hint, ...
+  return {
+    quality: view.getFloat32(0, true),      // offset 0
+    lossless: view.getInt32(4, true),       // offset 4
+    method: view.getInt32(8, true),         // offset 8
+    preset: view.getInt32(12, true),        // offset 12
+    image_hint: view.getInt32(16, true),    // offset 16
+    exact: view.getInt32(100, true)         // offset 100 (approximate, needs verification)
+  }
+}
+
+/**
+ * Write WebP options to struct DataView
+ */
+export function writeWebPOptionsStruct(
+  view: DataView,
+  opts: {
+    quality?: number
+    lossless?: number | boolean
+    method?: number
+    preset?: number
+    image_hint?: number
+    exact?: number | boolean
+  }
+): void {
+  if (opts.quality !== undefined) {
+    view.setFloat32(0, opts.quality, true)
+  }
+  if (opts.lossless !== undefined) {
+    view.setInt32(4, typeof opts.lossless === 'boolean' ? (opts.lossless ? 1 : 0) : opts.lossless, true)
+  }
+  if (opts.method !== undefined) {
+    view.setInt32(8, opts.method, true)
+  }
+  if (opts.preset !== undefined) {
+    view.setInt32(12, opts.preset, true)
+  }
+  if (opts.image_hint !== undefined) {
+    view.setInt32(16, opts.image_hint, true)
+  }
+  if (opts.exact !== undefined) {
+    view.setInt32(100, typeof opts.exact === 'boolean' ? (opts.exact ? 1 : 0) : opts.exact, true)
+  }
+}
+

@@ -7,7 +7,9 @@ import {
   createBufferStruct,
   readBufferStruct,
   copyFromCMemory,
-  getLastError
+  createWebPOptionsStruct,
+  writeWebPOptionsStruct,
+  readWebPOptionsStruct
 } from './ffi.ts'
 
 export interface WebPEncodeOptions {
@@ -24,26 +26,21 @@ export class WebPEncoder {
   constructor(options: Partial<WebPEncodeOptions> = {}) {
     this.options = { quality: 75, lossless: false, method: 4, ...options }
 
-    // Create options struct (simplified - would need full struct marshalling)
-    const optionsBuffer = new ArrayBuffer(256)
-    const optionsView = new DataView(optionsBuffer)
+    // Create options struct initialized with defaults
+    const { pointer: optionsPtr, view: optionsView } = createWebPOptionsStruct()
 
-    // Set quality (float at offset 0)
-    optionsView.setFloat32(0, this.options.quality || 75, true)
+    // Override with user-provided options
+    writeWebPOptionsStruct(optionsView, {
+      quality: this.options.quality,
+      lossless: this.options.lossless,
+      method: this.options.method
+    })
 
-    // Set lossless (int at offset 4)
-    optionsView.setInt32(4, this.options.lossless ? 1 : 0, true)
-
-    // Set method (int at offset 8)
-    optionsView.setInt32(8, this.options.method || 4, true)
-
-    const optionsPtr = Deno.UnsafePointer.of(optionsBuffer)
     const lib = getLibrary()
-
     this.encoder = lib.symbols.nextimage_webp_encoder_create(optionsPtr)
 
     if (!this.encoder) {
-      throw new Error(`Failed to create WebP encoder: ${getLastError()}`)
+      throw new Error('Failed to create WebP encoder')
     }
   }
 
@@ -63,7 +60,7 @@ export class WebPEncoder {
     )
 
     if (status !== 0) {
-      throw new Error(`WebP encoding failed: ${getLastError()}`)
+      throw new Error('WebP encoding failed')
     }
 
     const output = readBufferStruct(outputView)
@@ -89,10 +86,13 @@ export class WebPEncoder {
   }
 
   static getDefaultOptions(): WebPEncodeOptions {
+    const { view } = createWebPOptionsStruct()
+    const opts = readWebPOptionsStruct(view)
+
     return {
-      quality: 75,
-      lossless: false,
-      method: 4
+      quality: opts.quality,
+      lossless: opts.lossless !== 0,
+      method: opts.method
     }
   }
 }

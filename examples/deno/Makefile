@@ -6,10 +6,10 @@ all: install test
 # Install/setup dependencies
 install:
 	@echo "Setting up Deno environment..."
-	@# Build the TypeScript package first
-	@cd ../../typescript && npm run build
-	@# Verify Deno is available
-	@which deno > /dev/null 2>&1 || (echo "Error: Deno is not installed. Please install it from https://deno.land/" && exit 1)
+	@echo "Checking for Deno..."
+	@command -v deno >/dev/null 2>&1 || { echo "Error: Deno is not installed. Please install Deno from https://deno.land"; exit 1; }
+	@echo "Building TypeScript package..."
+	@cd ../../typescript && npm install && npm run build
 	@echo "✓ Deno environment ready"
 
 # Run all tests
@@ -26,8 +26,6 @@ test-basic:
 # Clean up
 clean:
 	@echo "Cleaning up..."
-	@rm -f ideamans-libnextimage-*.tgz
-	@rm -f libnextimage-*.tgz
 	@rm -rf output
 	@echo "✓ Cleanup complete"
 
