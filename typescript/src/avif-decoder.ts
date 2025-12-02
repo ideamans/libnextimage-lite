@@ -12,7 +12,8 @@ import {
   nextimage_last_error_message,
   nextimage_clear_error,
   NextImageDecodeBufferStruct,
-  NextImageAVIFDecodeOptionsStruct
+  NextImageAVIFDecodeOptionsStruct,
+  isNullPointer
 } from './ffi';
 import {
   AVIFDecodeOptions,
@@ -20,7 +21,8 @@ import {
   NextImageStatus,
   NextImageError,
   isSuccess,
-  normalizePixelFormat
+  normalizePixelFormat,
+  cBoolToBoolean
 } from './types';
 
 /**
@@ -58,7 +60,7 @@ export class AVIFDecoder {
     const cOptsPtr = this.convertOptions(options);
     this.decoderPtr = nextimage_avif_decoder_create(cOptsPtr);
 
-    if (!this.decoderPtr || koffi.address(this.decoderPtr) === 0n) {
+    if (isNullPointer(this.decoderPtr)) {
       const errMsg = nextimage_last_error_message();
       nextimage_clear_error(); // Clear error after reading
       throw new NextImageError(
@@ -168,11 +170,11 @@ export class AVIFDecoder {
     const cOpts = koffi.decode(cOptsPtr, NextImageAVIFDecodeOptionsStruct) as any;
 
     return {
-      useThreads: cOpts.use_threads !== 0,
+      useThreads: cBoolToBoolean(cOpts.use_threads),
       format: cOpts.format,
-      ignoreExif: cOpts.ignore_exif !== 0,
-      ignoreXMP: cOpts.ignore_xmp !== 0,
-      ignoreICC: cOpts.ignore_icc !== 0
+      ignoreExif: cBoolToBoolean(cOpts.ignore_exif),
+      ignoreXMP: cBoolToBoolean(cOpts.ignore_xmp),
+      ignoreICC: cBoolToBoolean(cOpts.ignore_icc)
     };
   }
 

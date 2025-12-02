@@ -210,6 +210,21 @@ export function isSuccess(status: NextImageStatus): boolean {
 }
 
 /**
+ * Helper: Convert C integer boolean to TypeScript boolean
+ * In C, 0 is false and non-zero is true
+ */
+export function cBoolToBoolean(value: number): boolean {
+  return value !== 0;
+}
+
+/**
+ * Helper: Convert TypeScript boolean to C integer boolean
+ */
+export function booleanToCBool(value: boolean): number {
+  return value ? 1 : 0;
+}
+
+/**
  * Helper: Get error message for status code
  */
 export function getStatusMessage(status: NextImageStatus): string {

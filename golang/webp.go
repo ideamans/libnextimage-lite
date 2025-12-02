@@ -69,6 +69,13 @@ const (
 	MetadataAll  = MetadataEXIF | MetadataICC | MetadataXMP // 7 - preserve all metadata
 )
 
+// BlendAlpha constants for alpha channel blending
+const (
+	BlendAlphaDisabled uint32 = 0xFFFFFFFF // disabled (no blending)
+	BlendAlphaWhite    uint32 = 0xFFFFFF   // blend against white background
+	BlendAlphaBlack    uint32 = 0x000000   // blend against black background
+)
+
 // WebPEncodeOptions represents WebP encoding options (全cwebpオプションに対応)
 type WebPEncodeOptions struct {
 	// 基本設定
@@ -234,7 +241,7 @@ func DefaultWebPEncodeOptions() WebPEncodeOptions {
 		ResizeMode:   ResizeModeAlways, // 0 = always (default)
 
 		// アルファチャンネル特殊処理
-		BlendAlpha: 0xFFFFFFFF, // 0xFFFFFFFF = disabled
+		BlendAlpha: BlendAlphaDisabled,
 		NoAlpha:    false,
 
 		// アニメーション設定

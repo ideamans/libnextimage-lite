@@ -12,13 +12,15 @@ import {
   nextimage_last_error_message,
   nextimage_clear_error,
   NextImageBufferStruct,
-  NextImageWebPEncodeOptionsStruct
+  NextImageWebPEncodeOptionsStruct,
+  isNullPointer
 } from './ffi';
 import {
   WebPEncodeOptions,
   NextImageStatus,
   NextImageError,
-  isSuccess
+  isSuccess,
+  cBoolToBoolean
 } from './types';
 
 /**
@@ -56,7 +58,7 @@ export class WebPEncoder {
     const cOptsPtr = this.convertOptions(options);
     this.encoderPtr = nextimage_webp_encoder_create(cOptsPtr);
 
-    if (!this.encoderPtr || koffi.address(this.encoderPtr) === 0n) {
+    if (isNullPointer(this.encoderPtr)) {
       const errMsg = nextimage_last_error_message();
       nextimage_clear_error(); // Clear error after reading
       throw new NextImageError(
@@ -142,11 +144,11 @@ export class WebPEncoder {
 
     return {
       quality: cOpts.quality,
-      lossless: cOpts.lossless !== 0,
+      lossless: cBoolToBoolean(cOpts.lossless),
       method: cOpts.method,
       preset: cOpts.preset,
       imageHint: cOpts.image_hint,
-      exact: cOpts.exact !== 0
+      exact: cBoolToBoolean(cOpts.exact)
     };
   }
 

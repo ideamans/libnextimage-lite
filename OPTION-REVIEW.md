@@ -229,7 +229,18 @@ All critical issues for cwebp have been fixed:
    - `WebPAlphaFilter` (golang/webp.go:44-51)
    - `WebPResizeMode` (golang/webp.go:53-60)
 
-4. **Struct fields updated** (golang/webp.go:72-142):
+4. **BlendAlpha constants** (golang/webp.go:72-77)
+   - Added constants to eliminate magic numbers:
+     ```go
+     const (
+         BlendAlphaDisabled uint32 = 0xFFFFFFFF // disabled (no blending)
+         BlendAlphaWhite    uint32 = 0xFFFFFF   // blend against white background
+         BlendAlphaBlack    uint32 = 0x000000   // blend against black background
+     )
+     ```
+   - `BlendAlpha` field now uses `BlendAlphaDisabled` as default instead of raw `0xFFFFFFFF`
+
+5. **Struct fields updated** (golang/webp.go:79-149):
    - `Preset: WebPPreset` (was `int`)
    - `FilterType: WebPFilterType` (was `int`)
    - `AlphaFiltering: WebPAlphaFilter` (was `int`)

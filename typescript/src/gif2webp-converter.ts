@@ -9,7 +9,8 @@ import {
   nextimage_free_buffer,
   nextimage_last_error_message,
   nextimage_clear_error,
-  NextImageBufferStruct
+  NextImageBufferStruct,
+  isNullPointer
 } from './ffi';
 
 // Load library
@@ -117,7 +118,7 @@ export class GIF2WebPConverter {
       gif2webp_free_options(cOptsPtr);
     }
 
-    if (!this.cmdPtr || koffi.address(this.cmdPtr) === 0n) {
+    if (isNullPointer(this.cmdPtr)) {
       const errMsg = nextimage_last_error_message();
       nextimage_clear_error();
       throw new NextImageError(

@@ -12,7 +12,8 @@ import {
   nextimage_last_error_message,
   nextimage_clear_error,
   NextImageDecodeBufferStruct,
-  NextImageWebPDecodeOptionsStruct
+  NextImageWebPDecodeOptionsStruct,
+  isNullPointer
 } from './ffi';
 import {
   WebPDecodeOptions,
@@ -20,7 +21,8 @@ import {
   NextImageStatus,
   NextImageError,
   isSuccess,
-  normalizePixelFormat
+  normalizePixelFormat,
+  cBoolToBoolean
 } from './types';
 
 /**
@@ -58,7 +60,7 @@ export class WebPDecoder {
     const cOptsPtr = this.convertOptions(options);
     this.decoderPtr = nextimage_webp_decoder_create(cOptsPtr);
 
-    if (!this.decoderPtr || koffi.address(this.decoderPtr) === 0n) {
+    if (isNullPointer(this.decoderPtr)) {
       const errMsg = nextimage_last_error_message();
       nextimage_clear_error(); // Clear error after reading
       throw new NextImageError(
@@ -168,7 +170,7 @@ export class WebPDecoder {
     const cOpts = koffi.decode(cOptsPtr, NextImageWebPDecodeOptionsStruct) as any;
 
     return {
-      useThreads: cOpts.use_threads !== 0,
+      useThreads: cBoolToBoolean(cOpts.use_threads),
       format: cOpts.format
     };
   }

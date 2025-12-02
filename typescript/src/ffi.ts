@@ -501,3 +501,17 @@ export {
   NextImageAVIFEncodeOptionsStruct,
   NextImageAVIFDecodeOptionsStruct
 };
+
+/**
+ * NULL pointer constant for koffi pointer comparison
+ */
+export const NULL_POINTER = 0n;
+
+/**
+ * Helper: Check if a koffi pointer is NULL
+ * @param ptr The pointer to check
+ * @returns true if the pointer is NULL or undefined
+ */
+export function isNullPointer(ptr: any): boolean {
+  return !ptr || koffi.address(ptr) === NULL_POINTER;
+}

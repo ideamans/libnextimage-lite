@@ -59,6 +59,7 @@ export class WebPEncoder {
       outputPtr
     )
 
+    // Status 0 = success (NextImageStatus.OK)
     if (status !== 0) {
       throw new Error('WebP encoding failed')
     }
@@ -91,7 +92,7 @@ export class WebPEncoder {
 
     return {
       quality: opts.quality,
-      lossless: opts.lossless !== 0,
+      lossless: opts.lossless !== 0, // C bool to JS bool conversion
       method: opts.method
     }
   }
