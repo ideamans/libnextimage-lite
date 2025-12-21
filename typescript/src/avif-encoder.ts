@@ -12,13 +12,15 @@ import {
   nextimage_last_error_message,
   nextimage_clear_error,
   NextImageBufferStruct,
-  NextImageAVIFEncodeOptionsStruct
+  NextImageAVIFEncodeOptionsStruct,
+  isNullPointer
 } from './ffi';
 import {
   AVIFEncodeOptions,
   NextImageStatus,
   NextImageError,
-  isSuccess
+  isSuccess,
+  cBoolToBoolean
 } from './types';
 
 /**
@@ -56,7 +58,7 @@ export class AVIFEncoder {
     const cOptsPtr = this.convertOptions(options);
     this.encoderPtr = nextimage_avif_encoder_create(cOptsPtr);
 
-    if (!this.encoderPtr || koffi.address(this.encoderPtr) === 0n) {
+    if (isNullPointer(this.encoderPtr)) {
       const errMsg = nextimage_last_error_message();
       nextimage_clear_error(); // Clear error after reading
       throw new NextImageError(
@@ -147,9 +149,9 @@ export class AVIFEncoder {
       bitDepth: cOpts.bit_depth,
       yuvFormat: cOpts.yuv_format,
       yuvRange: cOpts.yuv_range,
-      enableAlpha: cOpts.enable_alpha !== 0,
-      premultiplyAlpha: cOpts.premultiply_alpha !== 0,
-      sharpYUV: cOpts.sharp_yuv !== 0
+      enableAlpha: cBoolToBoolean(cOpts.enable_alpha),
+      premultiplyAlpha: cBoolToBoolean(cOpts.premultiply_alpha),
+      sharpYUV: cBoolToBoolean(cOpts.sharp_yuv)
     };
   }
 

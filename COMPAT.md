@@ -41,6 +41,7 @@
 - ✅ `-alpha_filter <string>` - alpha filtering (none=0, fast=1, best=2) → `alpha_filtering`
 - ✅ `-exact` - preserve RGB in transparent area → `exact`
 - ✅ `-blend_alpha <hex>` - blend against background → `blend_alpha` (0xRRGGBB format)
+  - 定数: `BlendAlphaDisabled` (0xFFFFFFFF), `BlendAlphaWhite` (0xFFFFFF), `BlendAlphaBlack` (0x000000)
 - ✅ `-noalpha` - discard transparency → `noalpha`
 
 #### ロスレスオプション

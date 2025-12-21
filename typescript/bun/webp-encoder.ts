@@ -55,6 +55,7 @@ export class WebPEncoder {
 
     const status = lib.symbols.nextimage_webp_encoder_encode(this.encoder, ptr(data), data.length, outputPtr)
 
+    // Status 0 = success (NextImageStatus.OK)
     if (status !== 0) {
       throw new Error('WebP encoding failed')
     }
@@ -88,7 +89,7 @@ export class WebPEncoder {
 
     return {
       quality: opts.quality,
-      lossless: opts.lossless !== 0,
+      lossless: opts.lossless !== 0, // C bool to JS bool conversion
       method: opts.method
     }
   }

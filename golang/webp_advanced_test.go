@@ -196,7 +196,7 @@ func TestWebPBlendAlpha(t *testing.T) {
 	opts := DefaultWebPEncodeOptions()
 	opts.Quality = 80
 	opts.Lossless = true // lossless to preserve quality
-	opts.BlendAlpha = 0xFFFFFF // white
+	opts.BlendAlpha = BlendAlphaWhite
 
 	webpData, err := WebPEncodeBytes(inputData, opts)
 	if err != nil {
