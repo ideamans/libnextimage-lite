@@ -1,7 +1,7 @@
 package libnextimage
 
 // LibraryVersion is the current version of libnextimage for releases
-const LibraryVersion = "0.3.0"
+const LibraryVersion = "0.5.0"
 
 // LibraryPlatforms lists the platforms for which pre-built libraries are available
 var LibraryPlatforms = []string{

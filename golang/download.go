@@ -10,8 +10,26 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"time"
 )
+
+var (
+	// ensureOnce ensures EnsureLibrary only runs once per process
+	ensureOnce sync.Once
+	// ensureError stores the result of the first EnsureLibrary call
+	ensureError error
+	// downloadVerbose controls whether download messages are printed (default: false)
+	// Set LIBNEXTIMAGE_VERBOSE=1 environment variable or call SetDownloadVerbose(true)
+	downloadVerbose = os.Getenv("LIBNEXTIMAGE_VERBOSE") != ""
+)
+
+// SetDownloadVerbose enables or disables verbose download messages.
+// By default, download messages are suppressed. Set to true to see download progress.
+// This must be called before EnsureLibrary() to take effect.
+func SetDownloadVerbose(verbose bool) {
+	downloadVerbose = verbose
+}
 
 const (
 	githubUser = "ideamans"
@@ -101,15 +119,17 @@ func downloadLibrary() error {
 // getPreviousVersion returns a reasonable fallback version
 // This helps during the window when a new version is tagged but binaries aren't ready
 func getPreviousVersion(currentVersion string) string {
-	// Simple heuristic: if current is 0.X.0, try 0.X-1.0
-	// This is a basic implementation - could be made more sophisticated
-	if currentVersion == "0.3.0" {
-		return "0.2.0"
+	// Mapping of current version to fallback version
+	fallbackVersions := map[string]string{
+		"0.5.1": "0.5.0",
+		"0.5.0": "0.4.1",
+		"0.4.1": "0.4.0",
+		"0.4.0": "0.3.0",
+		"0.3.0": "0.2.0",
 	}
-	if currentVersion == "0.4.0" {
-		return "0.3.0"
+	if fallback, ok := fallbackVersions[currentVersion]; ok {
+		return fallback
 	}
-	// Add more mappings as needed, or implement proper semver parsing
 	return ""
 }
 
@@ -130,16 +150,20 @@ func downloadLibraryVersion(version string) error {
 			return fmt.Errorf("failed to get target directory: cache=%w, project=%w", err, projErr)
 		}
 		targetDir = projectRoot
-		fmt.Fprintf(os.Stderr, "Warning: Could not create cache directory, using project directory: %v\n", err)
+		if downloadVerbose {
+			fmt.Fprintf(os.Stderr, "Warning: Could not create cache directory, using project directory: %v\n", err)
+		}
 	}
 
 	platform := getPlatform()
 	archiveName := fmt.Sprintf("libnextimage-v%s-%s.tar.gz", version, platform)
 	url := fmt.Sprintf("%s/v%s/%s", baseURL, version, archiveName)
 
-	fmt.Printf("Downloading libnextimage library for %s...\n", platform)
-	fmt.Printf("URL: %s\n", url)
-	fmt.Printf("Target: %s\n", targetDir)
+	if downloadVerbose {
+		fmt.Printf("Downloading libnextimage library for %s...\n", platform)
+		fmt.Printf("URL: %s\n", url)
+		fmt.Printf("Target: %s\n", targetDir)
+	}
 
 	// Create HTTP client with timeout and context
 	ctx, cancel := context.WithTimeout(context.Background(), defaultDownloadTimeout)
@@ -209,7 +233,9 @@ func downloadLibraryVersion(version string) error {
 		}
 	}
 
-	fmt.Printf("Successfully downloaded and extracted library to %s\n", targetDir)
+	if downloadVerbose {
+		fmt.Printf("Successfully downloaded and extracted library to %s\n", targetDir)
+	}
 	return nil
 }
 
@@ -224,22 +250,36 @@ func DownloadLibrary(version string) error {
 // EnsureLibrary ensures the library is available, downloading if necessary.
 // This is the recommended way to initialize the library.
 // Returns an error if the library cannot be found or downloaded.
+// This function is safe to call multiple times; it only attempts download once per process.
 func EnsureLibrary() error {
+	ensureOnce.Do(func() {
+		ensureError = ensureLibraryInternal()
+	})
+	return ensureError
+}
+
+// ensureLibraryInternal is the actual implementation of EnsureLibrary
+func ensureLibraryInternal() error {
 	if checkLibraryExists() {
 		return nil
 	}
 
-	fmt.Println("Pre-built library not found. Attempting to download from GitHub Releases...")
+	if downloadVerbose {
+		fmt.Println("Pre-built library not found. Attempting to download from GitHub Releases...")
+	}
 
 	if err := downloadLibrary(); err != nil {
 		// Try to fall back to previous version (handles timing issues during release)
 		previousVersion := getPreviousVersion(LibraryVersion)
 		if previousVersion != "" {
-			fmt.Fprintf(os.Stderr, "\nAttempting to download previous stable version v%s as fallback...\n", previousVersion)
+			if downloadVerbose {
+				fmt.Fprintf(os.Stderr, "Attempting to download previous stable version v%s as fallback...\n", previousVersion)
+			}
 			if fallbackErr := downloadLibraryVersion(previousVersion); fallbackErr == nil {
-				fmt.Printf("Successfully downloaded fallback version v%s\n", previousVersion)
-				fmt.Printf("Note: Using v%s library binaries with v%s code.\n", previousVersion, LibraryVersion)
-				fmt.Printf("The library is backwards compatible. Update to v%s binaries when available.\n", LibraryVersion)
+				if downloadVerbose {
+					fmt.Printf("Successfully downloaded fallback version v%s\n", previousVersion)
+					fmt.Printf("Note: Using v%s library binaries with v%s code.\n", previousVersion, LibraryVersion)
+				}
 				return nil
 			}
 		}
