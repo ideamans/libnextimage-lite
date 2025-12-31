@@ -240,6 +240,15 @@ test-reports/
 # testdata/webp-samples/*.webp
 
 # ========================================
+# Rust
+# ========================================
+# Build output
+rust/target/
+
+# Cargo lock (uncomment if library only)
+# rust/Cargo.lock
+
+# ========================================
 # TypeScript/Node.js
 # ========================================
 # Dependencies
