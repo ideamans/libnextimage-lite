@@ -591,6 +591,13 @@ NextImageStatus nextimage_avif_decode_alloc(
     decoder->imageSizeLimit = options->image_size_limit;
     decoder->imageDimensionLimit = options->image_dimension_limit;
 
+    // Set threading
+    if (options->use_threads) {
+        decoder->maxThreads = queryCPUCount();
+    } else {
+        decoder->maxThreads = 1;
+    }
+
     // Set strict validation flags
     if (options->strict_flags == 0) {
         decoder->strictFlags = AVIF_STRICT_DISABLED;

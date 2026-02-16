@@ -235,10 +235,19 @@ func DefaultAVIFDecodeOptions() AVIFDecodeOptions {
 func (opts *AVIFEncodeOptions) toCEncodeOptions() C.NextImageAVIFEncodeOptions {
 	var copts C.NextImageAVIFEncodeOptions
 
-	// Quality settings
-	copts.quality = C.int(opts.Quality)
-	copts.quality_alpha = C.int(opts.QualityAlpha)
-	copts.speed = C.int(opts.Speed)
+	// Lossless mode: override quality and format settings to match avifenc -l behavior
+	if opts.Lossless {
+		copts.quality = 100                                    // AVIF_QUALITY_LOSSLESS
+		copts.quality_alpha = 100                              // alpha also lossless
+		copts.speed = C.int(opts.Speed)
+		copts.matrix_coefficients = 0                          // Identity (no YUV transform)
+		copts.yuv_format = 0                                   // 444 (required for Identity matrix)
+		copts.yuv_range = 1                                    // Full range
+	} else {
+		copts.quality = C.int(opts.Quality)
+		copts.quality_alpha = C.int(opts.QualityAlpha)
+		copts.speed = C.int(opts.Speed)
+	}
 
 	// Deprecated quantizer settings
 	copts.min_quantizer = C.int(opts.MinQuantizer)
@@ -248,8 +257,10 @@ func (opts *AVIFEncodeOptions) toCEncodeOptions() C.NextImageAVIFEncodeOptions {
 
 	// Format settings
 	copts.bit_depth = C.int(opts.BitDepth)
-	copts.yuv_format = C.int(opts.YUVFormat)
-	copts.yuv_range = C.int(opts.YUVRange)
+	if !opts.Lossless {
+		copts.yuv_format = C.int(opts.YUVFormat)
+		copts.yuv_range = C.int(opts.YUVRange)
+	}
 
 	// Alpha settings
 	if opts.EnableAlpha {
@@ -266,7 +277,9 @@ func (opts *AVIFEncodeOptions) toCEncodeOptions() C.NextImageAVIFEncodeOptions {
 	// CICP color settings
 	copts.color_primaries = C.int(opts.ColorPrimaries)
 	copts.transfer_characteristics = C.int(opts.TransferCharacteristics)
-	copts.matrix_coefficients = C.int(opts.MatrixCoefficients)
+	if !opts.Lossless {
+		copts.matrix_coefficients = C.int(opts.MatrixCoefficients)
+	}
 
 	// Advanced settings
 	if opts.SharpYUV {

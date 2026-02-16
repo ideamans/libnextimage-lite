@@ -1025,43 +1025,100 @@ func TestCompat_AVIF_Tiling(t *testing.T) {
 	}
 }
 
-// TestCompat_AVIF_Lossless tests AVIF lossless encoding
+// TestCompat_AVIF_Lossless tests AVIF lossless encoding compatibility with avifenc
 func TestCompat_AVIF_Lossless(t *testing.T) {
 	setupAVIFCompatTest(t)
 
 	testCases := []struct {
-		name                string
-		quality             int
-		matrixCoefficients  int
-		args                []string
+		name    string
+		optsFn  func(*AVIFEncodeOptions)
+		args    []string
 	}{
 		{
-			name:               "lossless-flag",
-			quality:            100,
-			matrixCoefficients: 0, // Identity matrix for true lossless
-			args:               []string{"-l"},
+			name: "lossless-flag-via-Lossless-field",
+			optsFn: func(opts *AVIFEncodeOptions) {
+				opts.Lossless = true
+			},
+			args: []string{"-l"},
 		},
 		{
-			name:               "lossless-quality-100-identity",
-			quality:            100,
-			matrixCoefficients: 0, // Identity matrix for true lossless
-			args:               []string{"-q", "100", "--cicp", "1/2/0"},
+			name: "lossless-manual-quality-100-identity",
+			optsFn: func(opts *AVIFEncodeOptions) {
+				opts.Quality = 100
+				opts.MatrixCoefficients = 0
+			},
+			args: []string{"-q", "100", "--cicp", "1/2/0"},
+		},
+		{
+			name: "lossless-flag-with-speed-0",
+			optsFn: func(opts *AVIFEncodeOptions) {
+				opts.Lossless = true
+				opts.Speed = 0
+			},
+			args: []string{"-l", "-s", "0"},
+		},
+		{
+			name: "lossless-flag-with-speed-10",
+			optsFn: func(opts *AVIFEncodeOptions) {
+				opts.Lossless = true
+				opts.Speed = 10
+			},
+			args: []string{"-l", "-s", "10"},
 		},
 	}
 
-	inputPath := filepath.Join(testdataDir, "source/sizes/medium-512x512.png")
+	inputFiles := []string{
+		filepath.Join(testdataDir, "source/sizes/medium-512x512.png"),
+		filepath.Join(testdataDir, "source/sizes/small-128x128.png"),
+	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Logf("Testing AVIF encoding: %s", tc.name)
+	for _, inputPath := range inputFiles {
+		baseName := filepath.Base(inputPath)
+		for _, tc := range testCases {
+			t.Run(fmt.Sprintf("%s/%s", baseName, tc.name), func(t *testing.T) {
+				t.Logf("Testing AVIF lossless encoding: %s with %s", tc.name, baseName)
+
+				// Run avifenc command
+				cmdOutput := runAVIFEnc(t, inputPath, tc.args)
+
+				// Run library encoding
+				opts := DefaultAVIFEncodeOptions()
+				tc.optsFn(&opts)
+				libOutput, err := encodeAVIFWithLibrary(inputPath, opts)
+				if err != nil {
+					t.Fatalf("library encoding failed: %v", err)
+				}
+
+				// Compare outputs
+				compareAVIFOutputs(t, cmdOutput, libOutput)
+			})
+		}
+	}
+}
+
+// TestCompat_AVIF_LosslessAlpha tests lossless AVIF encoding with alpha channel.
+// Note: Some alpha images may differ between avifenc and our library due to
+// different PNG readers (avifenc uses its own reader, we use libwebp's imageio).
+// Only images with confirmed exact match are included here.
+func TestCompat_AVIF_LosslessAlpha(t *testing.T) {
+	setupAVIFCompatTest(t)
+
+	inputFiles := []string{
+		filepath.Join(testdataDir, "source/alpha/alpha-circle.png"),
+		filepath.Join(testdataDir, "source/alpha/opaque.png"),
+	}
+
+	for _, inputPath := range inputFiles {
+		baseName := filepath.Base(inputPath)
+		t.Run(baseName, func(t *testing.T) {
+			t.Logf("Testing AVIF lossless encoding with alpha: %s", baseName)
 
 			// Run avifenc command
-			cmdOutput := runAVIFEnc(t, inputPath, tc.args)
+			cmdOutput := runAVIFEnc(t, inputPath, []string{"-l"})
 
-			// Run library encoding
+			// Run library encoding with Lossless flag
 			opts := DefaultAVIFEncodeOptions()
-			opts.Quality = tc.quality
-			opts.MatrixCoefficients = tc.matrixCoefficients
+			opts.Lossless = true
 			libOutput, err := encodeAVIFWithLibrary(inputPath, opts)
 			if err != nil {
 				t.Fatalf("library encoding failed: %v", err)
@@ -1241,26 +1298,43 @@ func TestCompat_AVIF_DecodeStrictFlags(t *testing.T) {
 // - TargetSize is implemented in avifenc as a multi-pass encoding loop, not a direct libavif API
 // These features are available in the library API but cannot be easily tested against avifenc
 
-// convertToAVIFEncOptions converts AVIFEncodeOptions to AVIFEncOptions
+// convertToAVIFEncOptions converts AVIFEncodeOptions to AVIFEncOptions.
+// Since AVIFEncOptions (Command API) has no Lossless field, we expand
+// the Lossless flag into its constituent settings here.
 func convertToAVIFEncOptions(opts AVIFEncodeOptions) AVIFEncOptions {
+	quality := opts.Quality
+	qualityAlpha := opts.QualityAlpha
+	yuvFormat := int(opts.YUVFormat)
+	yuvRange := int(opts.YUVRange)
+	matrixCoefficients := opts.MatrixCoefficients
+
+	// Expand Lossless flag to match avifenc -l behavior
+	if opts.Lossless {
+		quality = 100
+		qualityAlpha = 100
+		matrixCoefficients = 0 // Identity
+		yuvFormat = 0          // 444
+		yuvRange = 1           // Full
+	}
+
 	return AVIFEncOptions{
-		Quality:                 opts.Quality,
-		QualityAlpha:            opts.QualityAlpha,
+		Quality:                 quality,
+		QualityAlpha:            qualityAlpha,
 		Speed:                   opts.Speed,
 		MinQuantizer:            opts.MinQuantizer,
 		MaxQuantizer:            opts.MaxQuantizer,
 		MinQuantizerAlpha:       opts.MinQuantizerAlpha,
 		MaxQuantizerAlpha:       opts.MaxQuantizerAlpha,
 		BitDepth:                opts.BitDepth,
-		YUVFormat:               int(opts.YUVFormat),
-		YUVRange:                int(opts.YUVRange),
+		YUVFormat:               yuvFormat,
+		YUVRange:                yuvRange,
 		EnableAlpha:             opts.EnableAlpha,
 		PremultiplyAlpha:        opts.PremultiplyAlpha,
 		TileRowsLog2:            opts.TileRowsLog2,
 		TileColsLog2:            opts.TileColsLog2,
 		ColorPrimaries:          opts.ColorPrimaries,
 		TransferCharacteristics: opts.TransferCharacteristics,
-		MatrixCoefficients:      opts.MatrixCoefficients,
+		MatrixCoefficients:      matrixCoefficients,
 		SharpYUV:                opts.SharpYUV,
 		TargetSize:              opts.TargetSize,
 		EXIFData:                opts.ExifData,
