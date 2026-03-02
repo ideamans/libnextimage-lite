@@ -1,28 +1,15 @@
 /**
- * libnextimage TypeScript/Node.js bindings
- * High-performance WebP and AVIF image processing
+ * libnextimage Light v2 - Simplified image conversion API
  */
 
 // Export types
-export * from './types';
+export { NextImageStatus, NextImageError, getStatusMessage } from './types'
 
 // Export library utilities
-export {
-  getLibraryVersion,
-  getPlatform,
-  getLibraryFileName,
-  getLibraryPath,
-  clearLibraryPathCache
-} from './library';
+export { getLibraryVersion, getPlatform, getLibraryFileName, getLibraryPath, clearLibraryPathCache } from './library'
 
-// Export WebP classes
-export { WebPEncoder } from './webp-encoder';
-export { WebPDecoder } from './webp-decoder';
+// Export Light API v2 conversion functions
+export { legacyToWebp, webpToLegacy, legacyToAvif, avifToLegacy } from './light'
 
-// Export AVIF classes
-export { AVIFEncoder } from './avif-encoder';
-export { AVIFDecoder } from './avif-decoder';
-
-// Export GIF conversion classes
-export { GIF2WebPConverter } from './gif2webp-converter';
-export { WebP2GIFConverter, WebP2GIFOptions } from './webp2gif-converter';
+// Export Light API types
+export type { ConvertInput, ConvertOutput } from './light'

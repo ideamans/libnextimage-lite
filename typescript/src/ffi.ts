@@ -515,3 +515,60 @@ export const NULL_POINTER = 0n;
 export function isNullPointer(ptr: any): boolean {
   return !ptr || koffi.address(ptr) === NULL_POINTER;
 }
+
+/**
+ * ========================================
+ * Light API - Simplified conversion functions
+ * ========================================
+ */
+
+// struct NextImageLightInput { const uint8_t* data; size_t size; int quality; int min_quantizer; int max_quantizer; }
+export const NextImageLightInputStruct = koffi.struct('NextImageLightInput', {
+  data: koffi.pointer(koffi.types.uint8),
+  size: koffi.types.size_t,
+  quality: koffi.types.int,
+  min_quantizer: koffi.types.int,
+  max_quantizer: koffi.types.int,
+});
+
+// struct NextImageLightOutput { int status; uint8_t* data; size_t size; char mime_type[32]; }
+export const NextImageLightOutputStruct = koffi.struct('NextImageLightOutput', {
+  status: koffi.types.int,
+  data: koffi.pointer(koffi.types.uint8),
+  size: koffi.types.size_t,
+  mime_type: koffi.array('char', 32),
+});
+
+// void nextimage_light_free(NextImageLightOutput* output)
+export const nextimage_light_free = lib.func(
+  'nextimage_light_free',
+  koffi.types.void,
+  [koffi.pointer(NextImageLightOutputStruct)]
+);
+
+// Light API output parameter type (koffi.out so C-modified values are read back)
+const LightOutputOut = koffi.out(koffi.pointer(NextImageLightOutputStruct));
+
+export const nextimage_light_legacy_to_webp = lib.func(
+  'nextimage_light_legacy_to_webp',
+  koffi.types.int,
+  [koffi.pointer(NextImageLightInputStruct), LightOutputOut]
+);
+
+export const nextimage_light_webp_to_legacy = lib.func(
+  'nextimage_light_webp_to_legacy',
+  koffi.types.int,
+  [koffi.pointer(NextImageLightInputStruct), LightOutputOut]
+);
+
+export const nextimage_light_legacy_to_avif = lib.func(
+  'nextimage_light_legacy_to_avif',
+  koffi.types.int,
+  [koffi.pointer(NextImageLightInputStruct), LightOutputOut]
+);
+
+export const nextimage_light_avif_to_legacy = lib.func(
+  'nextimage_light_avif_to_legacy',
+  koffi.types.int,
+  [koffi.pointer(NextImageLightInputStruct), LightOutputOut]
+);

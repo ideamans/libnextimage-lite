@@ -219,6 +219,7 @@ set(SOURCES
     src/common.c
     src/webp.c
     src/avif.c
+    src/light.c
 )
 
 # giflibが見つかった場合のみgifdec.cを追加
@@ -485,6 +486,7 @@ install(FILES
     include/nextimage.h
     include/webp.h
     include/avif.h
+    include/nextimage_light.h
     DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/../lib/include
 )
 
