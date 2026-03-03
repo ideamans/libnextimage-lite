@@ -20,7 +20,8 @@ cd "$BUILD_DIR"
 
 # CMake設定
 echo "=== Running CMake configuration ==="
-cmake .. -DCMAKE_BUILD_TYPE=Release
+# CMAKE_EXTRA_ARGS環境変数で追加のCMakeオプションを渡せる
+cmake .. -DCMAKE_BUILD_TYPE=Release ${CMAKE_EXTRA_ARGS:-}
 
 # ビルド
 echo ""

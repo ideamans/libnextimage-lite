@@ -66,11 +66,17 @@ jobs:
         run: |
           bash scripts/build-c-library.sh
 
+      - name: Pre-clone AOM source (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          git clone -b v3.12.1 --depth 1 https://aomedia.googlesource.com/aom /tmp/aom-source
+
       - name: Build C library (Windows - MSYS2)
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
-          bash scripts/build-c-library.sh
+          CMAKE_EXTRA_ARGS="-DFETCHCONTENT_SOURCE_DIR_LIBAOM=/tmp/aom-source" bash scripts/build-c-library.sh
 
       - name: Build C tests (Unix)
         if: runner.os != 'Windows'
