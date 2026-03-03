@@ -76,7 +76,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
-          CMAKE_EXTRA_ARGS="-DFETCHCONTENT_SOURCE_DIR_LIBAOM=/tmp/aom-source" bash scripts/build-c-library.sh
+          CMAKE_EXTRA_ARGS="-DFETCHCONTENT_SOURCE_DIR_LIBAOM=/tmp/aom-source -DAOM_TARGET_CPU=generic" bash scripts/build-c-library.sh
 
       - name: Build C tests (Unix)
         if: runner.os != 'Windows'
