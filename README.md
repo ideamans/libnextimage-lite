@@ -1,4 +1,4 @@
-# libnextimage-light
+# libnextimage-lite
 
 Simplified image conversion library with bindings for Go and TypeScript/Node.js.
 
@@ -124,15 +124,37 @@ cd golang && go test -v -timeout 120s
 cd typescript && npm install && npm test
 ```
 
+## Showcase
+
+A visual comparison tool is included under [`showcase/`](showcase/). It converts test images with the library and displays original vs converted images side-by-side in the browser.
+
+```bash
+cd showcase
+npm install
+npm run generate   # Convert test images → public/
+npm run dev        # Open viewer in browser
+```
+
+See [showcase/README.md](showcase/README.md) for details.
+
 ## Documentation
 
+- [C Library README](c/README.md)
 - [Go README](golang/README.md)
 - [TypeScript README](typescript/README.md)
+- [Release Process](RELEASE.md)
 
 ## License
 
-BSD 3-Clause License
+MIT License (c) 2025 Ideamans Inc.
 
-- libwebp: BSD License
-- libavif: BSD License
-- libaom: BSD License
+### Dependencies
+
+| Library | License | Purpose |
+|---------|---------|---------|
+| [libwebp](https://github.com/webmproject/libwebp) | BSD-3-Clause | WebP encoding/decoding |
+| [libavif](https://github.com/AOMediaCodec/libavif) | BSD-2-Clause | AVIF encoding/decoding |
+| [libaom](https://aomedia.googlesource.com/aom/) | BSD-2-Clause + Patent | AV1 codec (AVIF backend) |
+| [stb](https://github.com/nothings/stb) | MIT / Public Domain | JPEG/PNG I/O for C layer |
+
+All dependencies are statically linked and bundled in the pre-built binaries.

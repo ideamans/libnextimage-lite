@@ -1,4 +1,4 @@
-# libnextimage-light
+# libnextimage-lite
 
 GoとTypeScript/Node.js向けの簡略化された画像変換ライブラリ。
 
@@ -124,19 +124,41 @@ cd golang && go test -v -timeout 120s
 cd typescript && npm install && npm test
 ```
 
+## Showcase
+
+変換結果を目視確認するためのWebビューアが [`showcase/`](showcase/) に含まれています。テスト画像をライブラリで変換し、元画像と変換後画像をサイドバイサイドで比較できます。
+
+```bash
+cd showcase
+npm install
+npm run generate   # テスト画像を変換 → public/
+npm run dev        # ブラウザでビューアを開く
+```
+
+詳細は [showcase/README.md](showcase/README.md) を参照してください。
+
 ## ドキュメント
 
+- [C ライブラリ README](c/README.md)
 - [Go README](golang/README.md)
 - [TypeScript README](typescript/README.md)
+- [リリースプロセス](RELEASE.md)
 - [英語版README](README.md)
 
 ## ライセンス
 
-BSD 3-Clause License
+MIT License (c) 2025 Ideamans Inc.
 
-- libwebp: BSD License
-- libavif: BSD License
-- libaom: BSD License
+### 依存ライブラリ
+
+| ライブラリ | ライセンス | 用途 |
+|-----------|-----------|------|
+| [libwebp](https://github.com/webmproject/libwebp) | BSD-3-Clause | WebPエンコード/デコード |
+| [libavif](https://github.com/AOMediaCodec/libavif) | BSD-2-Clause | AVIFエンコード/デコード |
+| [libaom](https://aomedia.googlesource.com/aom/) | BSD-2-Clause + Patent | AV1コーデック（AVIFバックエンド） |
+| [stb](https://github.com/nothings/stb) | MIT / Public Domain | C層のJPEG/PNG入出力 |
+
+すべての依存ライブラリはスタティックリンクされ、ビルド済みバイナリに同梱されています。
 
 ## クレジット
 

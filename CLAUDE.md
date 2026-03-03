@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-**libnextimage-light** is a simplified image conversion library with bindings for Go and TypeScript/Node.js. It provides 4 unified conversion functions with automatic format detection. Built on top of a C FFI core wrapping libwebp and libavif.
+**libnextimage-lite** is a simplified image conversion library with bindings for Go and TypeScript/Node.js. It provides 4 unified conversion functions with automatic format detection. Built on top of a C FFI core wrapping libwebp and libavif.
 
 ## Build & Test Commands
 
@@ -72,7 +72,7 @@ make install-c
 │  golang/light.go    │  typescript/src/light.ts     │
 ├─────────────────────┴────────────────────────────┤
 │  C Light Layer: c/src/light.c                     │
-│  Header: c/include/nextimage_light.h              │
+│  Header: c/include/nextimage_lite.h              │
 │  (format detection + dispatch to internal cmds)   │
 ├───────────────────────────────────────────────────┤
 │  Internal Commands:                               │
@@ -91,7 +91,8 @@ make install-c
 - **golang/** — Go bindings via CGO. Single file `light.go` with struct-based API.
 - **typescript/** — Node.js bindings via [koffi](https://koffi.dev/) FFI. `light.ts` + `ffi.ts`.
 - **deps/** — Git submodules: libwebp, libavif, stb.
-- **testdata/** — Test images (JPEG, PNG, GIF, WebP, AVIF).
+- **testdata/** — Test images (JPEG, PNG, GIF, WebP, AVIF, ICC, EXIF orientation).
+- **showcase/** — Visual comparison tool. Converts test images and displays original vs converted side-by-side in browser. See `showcase/README.md`.
 
 ### Platform Identifiers
 
@@ -116,18 +117,18 @@ typedef struct {
     int quality;        // -1=default, 0-100
     int min_quantizer;  // -1=default, 0-63 (AVIF)
     int max_quantizer;  // -1=default, 0-63 (AVIF)
-} NextImageLightInput;
+} NextImageLiteInput;
 
 typedef struct {
     NextImageStatus status; uint8_t* data; size_t size;
     char mime_type[32]; // "image/webp", "image/jpeg", etc.
-} NextImageLightOutput;
+} NextImageLiteOutput;
 
-NextImageStatus nextimage_light_legacy_to_webp(input, output);
-NextImageStatus nextimage_light_webp_to_legacy(input, output);
-NextImageStatus nextimage_light_legacy_to_avif(input, output);
-NextImageStatus nextimage_light_avif_to_legacy(input, output);
-void nextimage_light_free(NextImageLightOutput*);
+NextImageStatus nextimage_lite_legacy_to_webp(input, output);
+NextImageStatus nextimage_lite_webp_to_legacy(input, output);
+NextImageStatus nextimage_lite_legacy_to_avif(input, output);
+NextImageStatus nextimage_lite_avif_to_legacy(input, output);
+void nextimage_lite_free(NextImageLiteOutput*);
 ```
 
 ### Go Layer
@@ -173,7 +174,7 @@ The light API delegates to these internal command implementations (tested indepe
 
 | Path | Purpose |
 |------|---------|
-| `c/include/nextimage_light.h` | Light API C header (4 functions) |
+| `c/include/nextimage_lite.h` | Light API C header (4 functions) |
 | `c/src/light.c` | Light API C implementation (format detection + dispatch) |
 | `c/src/webp.c` | Internal cwebp/dwebp/gif2webp/webp2gif implementations |
 | `c/src/avif.c` | Internal avifenc/avifdec implementations |
@@ -192,10 +193,12 @@ The light API delegates to these internal command implementations (tested indepe
 | `typescript/src/test/light.test.ts` | TypeScript tests |
 | `typescript/src/library.ts` | Platform detection, library path resolution |
 | `golang/download.go` | Auto-download logic for pre-built Go binaries |
+| `showcase/src/generate.ts` | Showcase data generation (converts test images) |
+| `showcase/viewer.ts` | Showcase browser viewer (manifest.json → card UI) |
 
 ## Memory Management
 
-- **C**: Caller must free via `nextimage_light_free()`.
+- **C**: Caller must free via `nextimage_lite_free()`.
 - **Go**: Output data is copied to Go slices; C buffer freed immediately. No manual cleanup needed.
 - **TypeScript**: Output data is copied to Buffer; C buffer freed immediately. No manual cleanup needed.
 

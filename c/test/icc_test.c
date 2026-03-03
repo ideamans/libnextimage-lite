@@ -7,7 +7,7 @@
  */
 
 #include "nextimage.h"
-#include "nextimage_light.h"
+#include "nextimage_lite.h"
 #include "internal.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -159,29 +159,29 @@ void test_jpeg_to_avif_icc_roundtrip(void) {
     printf("  ✓ Original JPEG ICC: %zu bytes\n", original_icc_size);
 
     // JPEG -> AVIF (via light API)
-    NextImageLightInput input = {0};
+    NextImageLiteInput input = {0};
     input.data = jpeg_data;
     input.size = jpeg_size;
     input.quality = 60;
     input.min_quantizer = -1;
     input.max_quantizer = -1;
 
-    NextImageLightOutput avif_output = {0};
-    NextImageStatus status = nextimage_light_legacy_to_avif(&input, &avif_output);
+    NextImageLiteOutput avif_output = {0};
+    NextImageStatus status = nextimage_lite_legacy_to_avif(&input, &avif_output);
     assert(status == NEXTIMAGE_OK);
     assert(avif_output.size > 0);
     printf("  ✓ Encoded to AVIF: %zu bytes\n", avif_output.size);
 
     // AVIF -> JPEG (via light API)
-    NextImageLightInput avif_input = {0};
+    NextImageLiteInput avif_input = {0};
     avif_input.data = avif_output.data;
     avif_input.size = avif_output.size;
     avif_input.quality = -1;
     avif_input.min_quantizer = -1;
     avif_input.max_quantizer = -1;
 
-    NextImageLightOutput jpeg_output = {0};
-    status = nextimage_light_avif_to_legacy(&avif_input, &jpeg_output);
+    NextImageLiteOutput jpeg_output = {0};
+    status = nextimage_lite_avif_to_legacy(&avif_input, &jpeg_output);
     assert(status == NEXTIMAGE_OK);
     assert(jpeg_output.size > 0);
     printf("  ✓ Decoded to JPEG: %zu bytes\n", jpeg_output.size);
@@ -202,8 +202,8 @@ void test_jpeg_to_avif_icc_roundtrip(void) {
     free(original_icc);
     free(output_icc);
     free(jpeg_data);
-    nextimage_light_free(&avif_output);
-    nextimage_light_free(&jpeg_output);
+    nextimage_lite_free(&avif_output);
+    nextimage_lite_free(&jpeg_output);
     printf("  ✓ JPEG->AVIF->JPEG ICC roundtrip test passed\n");
 }
 
@@ -226,29 +226,29 @@ void test_png_to_avif_icc_roundtrip(void) {
     printf("  ✓ Original PNG ICC: %zu bytes\n", original_icc_size);
 
     // PNG -> AVIF (via light API, lossless)
-    NextImageLightInput input = {0};
+    NextImageLiteInput input = {0};
     input.data = png_data;
     input.size = png_size;
     input.quality = -1;
     input.min_quantizer = -1;
     input.max_quantizer = -1;
 
-    NextImageLightOutput avif_output = {0};
-    NextImageStatus status = nextimage_light_legacy_to_avif(&input, &avif_output);
+    NextImageLiteOutput avif_output = {0};
+    NextImageStatus status = nextimage_lite_legacy_to_avif(&input, &avif_output);
     assert(status == NEXTIMAGE_OK);
     assert(avif_output.size > 0);
     printf("  ✓ Encoded to AVIF: %zu bytes\n", avif_output.size);
 
     // AVIF -> PNG (via light API, lossless -> PNG)
-    NextImageLightInput avif_input = {0};
+    NextImageLiteInput avif_input = {0};
     avif_input.data = avif_output.data;
     avif_input.size = avif_output.size;
     avif_input.quality = -1;
     avif_input.min_quantizer = -1;
     avif_input.max_quantizer = -1;
 
-    NextImageLightOutput png_output = {0};
-    status = nextimage_light_avif_to_legacy(&avif_input, &png_output);
+    NextImageLiteOutput png_output = {0};
+    status = nextimage_lite_avif_to_legacy(&avif_input, &png_output);
     assert(status == NEXTIMAGE_OK);
     assert(png_output.size > 0);
     printf("  ✓ Decoded to PNG: %zu bytes\n", png_output.size);
@@ -269,8 +269,8 @@ void test_png_to_avif_icc_roundtrip(void) {
     free(original_icc);
     free(output_icc);
     free(png_data);
-    nextimage_light_free(&avif_output);
-    nextimage_light_free(&png_output);
+    nextimage_lite_free(&avif_output);
+    nextimage_lite_free(&png_output);
     printf("  ✓ PNG->AVIF->PNG ICC roundtrip test passed\n");
 }
 
@@ -285,28 +285,28 @@ void test_no_icc_jpeg_roundtrip(void) {
     assert(jpeg_data != NULL);
 
     // JPEG -> AVIF
-    NextImageLightInput input = {0};
+    NextImageLiteInput input = {0};
     input.data = jpeg_data;
     input.size = jpeg_size;
     input.quality = 60;
     input.min_quantizer = -1;
     input.max_quantizer = -1;
 
-    NextImageLightOutput avif_output = {0};
-    NextImageStatus status = nextimage_light_legacy_to_avif(&input, &avif_output);
+    NextImageLiteOutput avif_output = {0};
+    NextImageStatus status = nextimage_lite_legacy_to_avif(&input, &avif_output);
     assert(status == NEXTIMAGE_OK);
     printf("  ✓ Encoded to AVIF: %zu bytes\n", avif_output.size);
 
     // AVIF -> JPEG
-    NextImageLightInput avif_input = {0};
+    NextImageLiteInput avif_input = {0};
     avif_input.data = avif_output.data;
     avif_input.size = avif_output.size;
     avif_input.quality = -1;
     avif_input.min_quantizer = -1;
     avif_input.max_quantizer = -1;
 
-    NextImageLightOutput jpeg_output = {0};
-    status = nextimage_light_avif_to_legacy(&avif_input, &jpeg_output);
+    NextImageLiteOutput jpeg_output = {0};
+    status = nextimage_lite_avif_to_legacy(&avif_input, &jpeg_output);
     assert(status == NEXTIMAGE_OK);
     printf("  ✓ Decoded to JPEG: %zu bytes\n", jpeg_output.size);
 
@@ -319,8 +319,8 @@ void test_no_icc_jpeg_roundtrip(void) {
     printf("  ✓ No ICC in output (expected)\n");
 
     free(jpeg_data);
-    nextimage_light_free(&avif_output);
-    nextimage_light_free(&jpeg_output);
+    nextimage_lite_free(&avif_output);
+    nextimage_lite_free(&jpeg_output);
     printf("  ✓ No-ICC JPEG roundtrip test passed\n");
 }
 

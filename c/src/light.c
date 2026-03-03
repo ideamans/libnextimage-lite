@@ -1,4 +1,5 @@
-#include "nextimage_light.h"
+#include "nextimage_lite.h"
+#include "internal.h"
 #include "nextimage/cwebp.h"
 #include "nextimage/dwebp.h"
 #include "nextimage/gif2webp.h"
@@ -8,6 +9,7 @@
 #include "webp/decode.h"
 #include "avif/avif.h"
 #include <string.h>
+#include <stdlib.h>
 
 // ========================================
 // Format detection helpers
@@ -58,7 +60,7 @@ static ImageType detect_image_type(const uint8_t* data, size_t size) {
 // ========================================
 // Free output buffer
 // ========================================
-void nextimage_light_free(NextImageLightOutput* output) {
+void nextimage_lite_free(NextImageLiteOutput* output) {
     if (output && output->data) {
         NextImageBuffer buf;
         buf.data = output->data;
@@ -72,7 +74,7 @@ void nextimage_light_free(NextImageLightOutput* output) {
 // ========================================
 // Legacy (JPEG/PNG/GIF) -> WebP
 // ========================================
-NextImageStatus nextimage_light_legacy_to_webp(const NextImageLightInput* input, NextImageLightOutput* output) {
+NextImageStatus nextimage_lite_legacy_to_webp(const NextImageLiteInput* input, NextImageLiteOutput* output) {
     if (!input || !input->data || input->size == 0 || !output) {
         return NEXTIMAGE_ERROR_INVALID_PARAM;
     }
@@ -111,8 +113,24 @@ NextImageStatus nextimage_light_legacy_to_webp(const NextImageLightInput* input,
     }
 
     if (type == IMG_TYPE_JPEG || type == IMG_TYPE_PNG) {
+        // Auto-orient JPEG inputs (rotate based on Exif orientation)
+        NextImageBuffer oriented = {0};
+        const uint8_t* encode_data = input->data;
+        size_t encode_size = input->size;
+
+        if (type == IMG_TYPE_JPEG) {
+            int orient = nextimage_extract_exif_orientation(input->data, input->size);
+            if (orient > 1) {
+                if (nextimage_jpeg_auto_orient(input->data, input->size, &oriented) == 0) {
+                    encode_data = oriented.data;
+                    encode_size = oriented.size;
+                }
+            }
+        }
+
         CWebPOptions* opts = cwebp_create_default_options();
         if (!opts) {
+            nextimage_free_buffer(&oriented);
             output->status = NEXTIMAGE_ERROR_OUT_OF_MEMORY;
             return output->status;
         }
@@ -130,6 +148,7 @@ NextImageStatus nextimage_light_legacy_to_webp(const NextImageLightInput* input,
         CWebPCommand* cmd = cwebp_new_command(opts);
         cwebp_free_options(opts);
         if (!cmd) {
+            nextimage_free_buffer(&oriented);
             output->status = NEXTIMAGE_ERROR_ENCODE_FAILED;
             return output->status;
         }
@@ -137,8 +156,9 @@ NextImageStatus nextimage_light_legacy_to_webp(const NextImageLightInput* input,
         NextImageBuffer buf;
         memset(&buf, 0, sizeof(buf));
 
-        output->status = cwebp_run_command(cmd, input->data, input->size, &buf);
+        output->status = cwebp_run_command(cmd, encode_data, encode_size, &buf);
         cwebp_free_command(cmd);
+        nextimage_free_buffer(&oriented);
 
         if (output->status == NEXTIMAGE_OK) {
             output->data = buf.data;
@@ -156,7 +176,7 @@ NextImageStatus nextimage_light_legacy_to_webp(const NextImageLightInput* input,
 // ========================================
 // WebP -> Legacy (JPEG/PNG/GIF)
 // ========================================
-NextImageStatus nextimage_light_webp_to_legacy(const NextImageLightInput* input, NextImageLightOutput* output) {
+NextImageStatus nextimage_lite_webp_to_legacy(const NextImageLiteInput* input, NextImageLiteOutput* output) {
     if (!input || !input->data || input->size == 0 || !output) {
         return NEXTIMAGE_ERROR_INVALID_PARAM;
     }
@@ -269,7 +289,7 @@ NextImageStatus nextimage_light_webp_to_legacy(const NextImageLightInput* input,
 // ========================================
 // Legacy (JPEG/PNG) -> AVIF
 // ========================================
-NextImageStatus nextimage_light_legacy_to_avif(const NextImageLightInput* input, NextImageLightOutput* output) {
+NextImageStatus nextimage_lite_legacy_to_avif(const NextImageLiteInput* input, NextImageLiteOutput* output) {
     if (!input || !input->data || input->size == 0 || !output) {
         return NEXTIMAGE_ERROR_INVALID_PARAM;
     }
@@ -284,8 +304,24 @@ NextImageStatus nextimage_light_legacy_to_avif(const NextImageLightInput* input,
         return output->status;
     }
 
+    // Auto-orient JPEG inputs (rotate based on Exif orientation)
+    NextImageBuffer oriented = {0};
+    const uint8_t* encode_data = input->data;
+    size_t encode_size = input->size;
+
+    if (type == IMG_TYPE_JPEG) {
+        int orient = nextimage_extract_exif_orientation(input->data, input->size);
+        if (orient > 1) {
+            if (nextimage_jpeg_auto_orient(input->data, input->size, &oriented) == 0) {
+                encode_data = oriented.data;
+                encode_size = oriented.size;
+            }
+        }
+    }
+
     AVIFEncOptions* opts = avifenc_create_default_options();
     if (!opts) {
+        nextimage_free_buffer(&oriented);
         output->status = NEXTIMAGE_ERROR_OUT_OF_MEMORY;
         return output->status;
     }
@@ -314,6 +350,7 @@ NextImageStatus nextimage_light_legacy_to_avif(const NextImageLightInput* input,
     AVIFEncCommand* cmd = avifenc_new_command(opts);
     avifenc_free_options(opts);
     if (!cmd) {
+        nextimage_free_buffer(&oriented);
         output->status = NEXTIMAGE_ERROR_ENCODE_FAILED;
         return output->status;
     }
@@ -321,8 +358,9 @@ NextImageStatus nextimage_light_legacy_to_avif(const NextImageLightInput* input,
     NextImageBuffer buf;
     memset(&buf, 0, sizeof(buf));
 
-    output->status = avifenc_run_command(cmd, input->data, input->size, &buf);
+    output->status = avifenc_run_command(cmd, encode_data, encode_size, &buf);
     avifenc_free_command(cmd);
+    nextimage_free_buffer(&oriented);
 
     if (output->status == NEXTIMAGE_OK) {
         output->data = buf.data;
@@ -335,7 +373,7 @@ NextImageStatus nextimage_light_legacy_to_avif(const NextImageLightInput* input,
 // ========================================
 // AVIF -> Legacy (JPEG/PNG)
 // ========================================
-NextImageStatus nextimage_light_avif_to_legacy(const NextImageLightInput* input, NextImageLightOutput* output) {
+NextImageStatus nextimage_lite_avif_to_legacy(const NextImageLiteInput* input, NextImageLiteOutput* output) {
     if (!input || !input->data || input->size == 0 || !output) {
         return NEXTIMAGE_ERROR_INVALID_PARAM;
     }

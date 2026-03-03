@@ -1,5 +1,5 @@
 /**
- * libnextimage Light API v2 - Simplified image conversion
+ * libnextimage Lite API v2 - Simplified image conversion
  *
  * Provides 4 unified conversion functions with automatic format detection:
  * - legacyToWebp: JPEG/PNG/GIF -> WebP
@@ -13,11 +13,11 @@
 
 import koffi from 'koffi'
 import {
-  nextimage_light_legacy_to_webp,
-  nextimage_light_webp_to_legacy,
-  nextimage_light_legacy_to_avif,
-  nextimage_light_avif_to_legacy,
-  nextimage_light_free,
+  nextimage_lite_legacy_to_webp,
+  nextimage_lite_webp_to_legacy,
+  nextimage_lite_legacy_to_avif,
+  nextimage_lite_avif_to_legacy,
+  nextimage_lite_free,
 } from './ffi'
 import { NextImageStatus, NextImageError } from './types'
 
@@ -92,7 +92,7 @@ function runConversion(
   }
 
   // Free C buffer
-  nextimage_light_free(cOutput)
+  nextimage_lite_free(cOutput)
 
   return { data: result, mimeType }
 }
@@ -102,7 +102,7 @@ function runConversion(
  * JPEG: lossy (quality default=75), PNG: lossless, GIF: gif2webp default.
  */
 export function legacyToWebp(input: ConvertInput): ConvertOutput {
-  return runConversion(nextimage_light_legacy_to_webp, input, 'legacy_to_webp')
+  return runConversion(nextimage_lite_legacy_to_webp, input, 'legacy_to_webp')
 }
 
 /**
@@ -110,7 +110,7 @@ export function legacyToWebp(input: ConvertInput): ConvertOutput {
  * Animated WebP -> GIF, Lossless WebP -> PNG, Lossy WebP -> JPEG (quality default=90).
  */
 export function webpToLegacy(input: ConvertInput): ConvertOutput {
-  return runConversion(nextimage_light_webp_to_legacy, input, 'webp_to_legacy')
+  return runConversion(nextimage_lite_webp_to_legacy, input, 'webp_to_legacy')
 }
 
 /**
@@ -118,7 +118,7 @@ export function webpToLegacy(input: ConvertInput): ConvertOutput {
  * JPEG: lossy (quality/quantizer params), PNG: lossless high-precision.
  */
 export function legacyToAvif(input: ConvertInput): ConvertOutput {
-  return runConversion(nextimage_light_legacy_to_avif, input, 'legacy_to_avif')
+  return runConversion(nextimage_lite_legacy_to_avif, input, 'legacy_to_avif')
 }
 
 /**
@@ -126,5 +126,5 @@ export function legacyToAvif(input: ConvertInput): ConvertOutput {
  * Lossless AVIF -> PNG, Lossy AVIF -> JPEG (quality default=90).
  */
 export function avifToLegacy(input: ConvertInput): ConvertOutput {
-  return runConversion(nextimage_light_avif_to_legacy, input, 'avif_to_legacy')
+  return runConversion(nextimage_lite_avif_to_legacy, input, 'avif_to_legacy')
 }

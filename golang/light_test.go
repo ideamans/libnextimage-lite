@@ -438,6 +438,134 @@ func TestLight_ICC_DisplayP3_JPEG_Roundtrip(t *testing.T) {
 }
 
 // ========================================
+// Exif orientation auto-rotation tests
+// ========================================
+
+// getWebPDimensions extracts width/height from a WebP file
+func getWebPDimensions(data []byte) (int, int) {
+	if len(data) < 30 || string(data[0:4]) != "RIFF" || string(data[8:12]) != "WEBP" {
+		return 0, 0
+	}
+
+	// VP8 lossy
+	if data[12] == 'V' && data[13] == 'P' && data[14] == '8' && data[15] == ' ' {
+		for i := 20; i+6 < len(data) && i < 30; i++ {
+			if data[i] == 0x9D && data[i+1] == 0x01 && data[i+2] == 0x2A {
+				w := int(data[i+3]) | int(data[i+4])<<8
+				h := int(data[i+5]) | int(data[i+6])<<8
+				return w & 0x3FFF, h & 0x3FFF
+			}
+		}
+	}
+
+	// VP8L lossless
+	if data[12] == 'V' && data[13] == 'P' && data[14] == '8' && data[15] == 'L' {
+		if len(data) > 25 && data[21] == 0x2F {
+			bits := uint32(data[22]) | uint32(data[23])<<8 | uint32(data[24])<<16 | uint32(data[25])<<24
+			w := int(bits&0x3FFF) + 1
+			h := int((bits>>14)&0x3FFF) + 1
+			return w, h
+		}
+	}
+
+	// VP8X extended
+	if data[12] == 'V' && data[13] == 'P' && data[14] == '8' && data[15] == 'X' {
+		w := int(data[24]) | int(data[25])<<8 | int(data[26])<<16 + 1
+		h := int(data[27]) | int(data[28])<<8 | int(data[29])<<16 + 1
+		return w, h
+	}
+
+	return 0, 0
+}
+
+func TestLight_Orientation_JPEG_to_WebP(t *testing.T) {
+	cases := []struct {
+		name      string
+		filename  string
+		expectedW int
+		expectedH int
+	}{
+		{"orientation-1", "orientation-1.jpg", 80, 60},
+		{"orientation-3", "orientation-3.jpg", 80, 60},
+		{"orientation-6", "orientation-6.jpg", 80, 60},
+		{"orientation-8", "orientation-8.jpg", 80, 60},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			jpeg := readTestFile(t, "orientation", tc.filename)
+			webpOut := LegacyToWebP(ConvertInput{Data: jpeg, Quality: 75, MinQuantizer: -1, MaxQuantizer: -1})
+			if webpOut.Error != nil {
+				t.Fatalf("LegacyToWebP failed: %v", webpOut.Error)
+			}
+			if webpOut.MimeType != "image/webp" {
+				t.Errorf("Expected image/webp, got %s", webpOut.MimeType)
+			}
+
+			w, h := getWebPDimensions(webpOut.Data)
+			if w != tc.expectedW || h != tc.expectedH {
+				t.Errorf("WebP dimensions %dx%d, expected %dx%d", w, h, tc.expectedW, tc.expectedH)
+			}
+			t.Logf("%s: %d bytes -> %d bytes WebP (%dx%d)", tc.filename, len(jpeg), len(webpOut.Data), w, h)
+		})
+	}
+}
+
+func TestLight_Orientation_JPEG_to_AVIF(t *testing.T) {
+	cases := []struct {
+		name     string
+		filename string
+	}{
+		{"orientation-1", "orientation-1.jpg"},
+		{"orientation-3", "orientation-3.jpg"},
+		{"orientation-6", "orientation-6.jpg"},
+		{"orientation-8", "orientation-8.jpg"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			jpeg := readTestFile(t, "orientation", tc.filename)
+			avifOut := LegacyToAvif(ConvertInput{Data: jpeg, Quality: 60, MinQuantizer: -1, MaxQuantizer: -1})
+			if avifOut.Error != nil {
+				t.Fatalf("LegacyToAvif failed: %v", avifOut.Error)
+			}
+			if avifOut.MimeType != "image/avif" {
+				t.Errorf("Expected image/avif, got %s", avifOut.MimeType)
+			}
+
+			// Decode AVIF back to JPEG to verify dimensions
+			jpegOut := AvifToLegacy(ConvertInput{Data: avifOut.Data, Quality: -1, MinQuantizer: -1, MaxQuantizer: -1})
+			if jpegOut.Error != nil {
+				t.Fatalf("AvifToLegacy failed: %v", jpegOut.Error)
+			}
+
+			// Check JPEG output has orientation-corrected dimensions
+			// JPEG SOF0 marker: FF C0 ... height (2 bytes) width (2 bytes)
+			w, h := 0, 0
+			for i := 2; i+9 < len(jpegOut.Data); {
+				if jpegOut.Data[i] == 0xFF && (jpegOut.Data[i+1] == 0xC0 || jpegOut.Data[i+1] == 0xC2) {
+					h = int(jpegOut.Data[i+5])<<8 | int(jpegOut.Data[i+6])
+					w = int(jpegOut.Data[i+7])<<8 | int(jpegOut.Data[i+8])
+					break
+				} else if jpegOut.Data[i] == 0xFF && jpegOut.Data[i+1] == 0xDA {
+					break
+				} else if jpegOut.Data[i] == 0xFF {
+					segLen := int(jpegOut.Data[i+2])<<8 | int(jpegOut.Data[i+3])
+					i += 2 + segLen
+				} else {
+					i++
+				}
+			}
+
+			if w != 80 || h != 60 {
+				t.Errorf("AVIF->JPEG dimensions %dx%d, expected 80x60", w, h)
+			}
+			t.Logf("%s: %d bytes -> %d bytes AVIF -> %d bytes JPEG (%dx%d)", tc.filename, len(jpeg), len(avifOut.Data), len(jpegOut.Data), w, h)
+		})
+	}
+}
+
+// ========================================
 // Error handling tests
 // ========================================
 func TestLight_ErrorHandling(t *testing.T) {

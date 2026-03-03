@@ -39,7 +39,7 @@ package libnextimage
 #include <stdlib.h>
 #include <string.h>
 #include "nextimage.h"
-#include "nextimage_light.h"
+#include "nextimage_lite.h"
 */
 import "C"
 import (
@@ -67,7 +67,7 @@ type ConvertOutput struct {
 func callLight(
 	input ConvertInput,
 	opName string,
-	cfunc func(*C.NextImageLightInput, *C.NextImageLightOutput) C.NextImageStatus,
+	cfunc func(*C.NextImageLiteInput, *C.NextImageLiteOutput) C.NextImageStatus,
 ) ConvertOutput {
 	if len(input.Data) == 0 {
 		return ConvertOutput{Error: fmt.Errorf("%s: empty input data", opName)}
@@ -78,7 +78,7 @@ func callLight(
 	pinner.Pin(&input.Data[0])
 	defer pinner.Unpin()
 
-	cInput := C.NextImageLightInput{
+	cInput := C.NextImageLiteInput{
 		data:          (*C.uint8_t)(unsafe.Pointer(&input.Data[0])),
 		size:          C.size_t(len(input.Data)),
 		quality:       C.int(input.Quality),
@@ -86,7 +86,7 @@ func callLight(
 		max_quantizer: C.int(input.MaxQuantizer),
 	}
 
-	var cOutput C.NextImageLightOutput
+	var cOutput C.NextImageLiteOutput
 
 	status := cfunc(&cInput, &cOutput)
 
@@ -104,7 +104,7 @@ func callLight(
 
 	result := C.GoBytes(unsafe.Pointer(cOutput.data), C.int(cOutput.size))
 	mimeType := C.GoString(&cOutput.mime_type[0])
-	C.nextimage_light_free(&cOutput)
+	C.nextimage_lite_free(&cOutput)
 
 	return ConvertOutput{Data: result, MimeType: mimeType}
 }
@@ -112,32 +112,32 @@ func callLight(
 // LegacyToWebP converts JPEG/PNG/GIF image data to WebP format.
 // JPEG: lossy (quality default=75), PNG: lossless, GIF: gif2webp default.
 func LegacyToWebP(input ConvertInput) ConvertOutput {
-	return callLight(input, "legacy_to_webp", func(in *C.NextImageLightInput, out *C.NextImageLightOutput) C.NextImageStatus {
-		return C.nextimage_light_legacy_to_webp(in, out)
+	return callLight(input, "legacy_to_webp", func(in *C.NextImageLiteInput, out *C.NextImageLiteOutput) C.NextImageStatus {
+		return C.nextimage_lite_legacy_to_webp(in, out)
 	})
 }
 
 // WebPToLegacy converts WebP image data to the appropriate legacy format.
 // Animated WebP -> GIF, Lossless WebP -> PNG, Lossy WebP -> JPEG (quality default=90).
 func WebPToLegacy(input ConvertInput) ConvertOutput {
-	return callLight(input, "webp_to_legacy", func(in *C.NextImageLightInput, out *C.NextImageLightOutput) C.NextImageStatus {
-		return C.nextimage_light_webp_to_legacy(in, out)
+	return callLight(input, "webp_to_legacy", func(in *C.NextImageLiteInput, out *C.NextImageLiteOutput) C.NextImageStatus {
+		return C.nextimage_lite_webp_to_legacy(in, out)
 	})
 }
 
 // LegacyToAvif converts JPEG/PNG image data to AVIF format.
 // JPEG: lossy (quality default=60, or use MinQuantizer/MaxQuantizer), PNG: lossless high-precision.
 func LegacyToAvif(input ConvertInput) ConvertOutput {
-	return callLight(input, "legacy_to_avif", func(in *C.NextImageLightInput, out *C.NextImageLightOutput) C.NextImageStatus {
-		return C.nextimage_light_legacy_to_avif(in, out)
+	return callLight(input, "legacy_to_avif", func(in *C.NextImageLiteInput, out *C.NextImageLiteOutput) C.NextImageStatus {
+		return C.nextimage_lite_legacy_to_avif(in, out)
 	})
 }
 
 // AvifToLegacy converts AVIF image data to the appropriate legacy format.
 // Lossless AVIF -> PNG, Lossy AVIF -> JPEG (quality default=90).
 func AvifToLegacy(input ConvertInput) ConvertOutput {
-	return callLight(input, "avif_to_legacy", func(in *C.NextImageLightInput, out *C.NextImageLightOutput) C.NextImageStatus {
-		return C.nextimage_light_avif_to_legacy(in, out)
+	return callLight(input, "avif_to_legacy", func(in *C.NextImageLiteInput, out *C.NextImageLiteOutput) C.NextImageStatus {
+		return C.nextimage_lite_avif_to_legacy(in, out)
 	})
 }
 

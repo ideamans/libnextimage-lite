@@ -122,4 +122,4 @@ cd golang && go test -v -timeout 120s
 
 ## License
 
-BSD-3-Clause
+MIT License (c) 2025 Ideamans Inc.

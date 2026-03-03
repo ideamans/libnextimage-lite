@@ -119,6 +119,23 @@ int nextimage_extract_icc_from_jpeg(
     const uint8_t* data, size_t size,
     uint8_t** out_icc, size_t* out_size);
 
+// ========================================
+// Exif orientation extraction and auto-rotation
+// ========================================
+
+// JPEG (メモリバッファ) からExif Orientationタグを抽出
+// 戻り値: 1-8 (Exif orientation値), 0 (orientationなし/エラー)
+int nextimage_extract_exif_orientation(const uint8_t* data, size_t size);
+
+// JPEG画像をExif Orientationに従って自動回転
+// 4:4:4サブサンプリング、品質100%で中間JPEGを生成
+// orientation==1 または orientation不明の場合は入力をそのままコピー
+// output は nextimage_free_buffer() で解放すること
+// 戻り値: 0=成功, -1=エラー
+int nextimage_jpeg_auto_orient(
+    const uint8_t* data, size_t size,
+    NextImageBuffer* output);
+
 // デバッグビルド専用
 #ifdef NEXTIMAGE_DEBUG
 void nextimage_increment_alloc_counter(void);

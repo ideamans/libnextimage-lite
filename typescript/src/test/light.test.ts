@@ -248,6 +248,104 @@ describe('ICC profile preservation', () => {
 })
 
 // ========================================
+// Exif orientation auto-rotation tests
+// ========================================
+
+function getWebPDimensions(data: Buffer): { width: number; height: number } {
+  if (data.length < 30 || data.toString('ascii', 0, 4) !== 'RIFF' || data.toString('ascii', 8, 12) !== 'WEBP') {
+    return { width: 0, height: 0 }
+  }
+
+  // VP8 lossy
+  if (data[12] === 0x56 && data[13] === 0x50 && data[14] === 0x38 && data[15] === 0x20) {
+    for (let i = 20; i + 6 < data.length && i < 30; i++) {
+      if (data[i] === 0x9d && data[i + 1] === 0x01 && data[i + 2] === 0x2a) {
+        const w = (data[i + 3] | (data[i + 4] << 8)) & 0x3fff
+        const h = (data[i + 5] | (data[i + 6] << 8)) & 0x3fff
+        return { width: w, height: h }
+      }
+    }
+  }
+
+  // VP8L lossless
+  if (data[12] === 0x56 && data[13] === 0x50 && data[14] === 0x38 && data[15] === 0x4c) {
+    if (data.length > 25 && data[21] === 0x2f) {
+      const bits = data[22] | (data[23] << 8) | (data[24] << 16) | (data[25] << 24)
+      const w = (bits & 0x3fff) + 1
+      const h = ((bits >> 14) & 0x3fff) + 1
+      return { width: w, height: h }
+    }
+  }
+
+  // VP8X extended
+  if (data[12] === 0x56 && data[13] === 0x50 && data[14] === 0x38 && data[15] === 0x58) {
+    const w = (data[24] | (data[25] << 8) | (data[26] << 16)) + 1
+    const h = (data[27] | (data[28] << 8) | (data[29] << 16)) + 1
+    return { width: w, height: h }
+  }
+
+  return { width: 0, height: 0 }
+}
+
+function getJPEGDimensions(data: Buffer): { width: number; height: number } {
+  let i = 2
+  while (i + 9 < data.length) {
+    if (data[i] === 0xff && (data[i + 1] === 0xc0 || data[i + 1] === 0xc2)) {
+      const h = (data[i + 5] << 8) | data[i + 6]
+      const w = (data[i + 7] << 8) | data[i + 8]
+      return { width: w, height: h }
+    } else if (data[i] === 0xff && data[i + 1] === 0xda) {
+      break
+    } else if (data[i] === 0xff) {
+      const segLen = (data[i + 2] << 8) | data[i + 3]
+      i += 2 + segLen
+    } else {
+      i++
+    }
+  }
+  return { width: 0, height: 0 }
+}
+
+describe('Exif orientation auto-rotation', () => {
+  const orientationFiles = [
+    { name: 'orientation-1.jpg', orientation: 1 },
+    { name: 'orientation-3.jpg', orientation: 3 },
+    { name: 'orientation-6.jpg', orientation: 6 },
+    { name: 'orientation-8.jpg', orientation: 8 },
+  ]
+
+  for (const { name, orientation } of orientationFiles) {
+    it(`should auto-orient ${name} (orientation=${orientation}) to WebP with correct dimensions`, () => {
+      const jpeg = readTestFile('orientation', name)
+      const result = legacyToWebp({ data: jpeg, quality: 75 })
+      assert.ok(result.data.length > 0)
+      assert.strictEqual(result.mimeType, 'image/webp')
+
+      const dim = getWebPDimensions(result.data)
+      assert.strictEqual(dim.width, 80, `WebP width should be 80 (got ${dim.width})`)
+      assert.strictEqual(dim.height, 60, `WebP height should be 60 (got ${dim.height})`)
+    })
+  }
+
+  for (const { name, orientation } of orientationFiles) {
+    it(`should auto-orient ${name} (orientation=${orientation}) to AVIF with correct dimensions`, () => {
+      const jpeg = readTestFile('orientation', name)
+      const avif = legacyToAvif({ data: jpeg, quality: 60 })
+      assert.ok(avif.data.length > 0)
+      assert.strictEqual(avif.mimeType, 'image/avif')
+
+      // Decode AVIF back to JPEG to verify dimensions
+      const output = avifToLegacy({ data: avif.data })
+      assert.ok(output.data.length > 0)
+
+      const dim = getJPEGDimensions(output.data)
+      assert.strictEqual(dim.width, 80, `JPEG width should be 80 (got ${dim.width})`)
+      assert.strictEqual(dim.height, 60, `JPEG height should be 60 (got ${dim.height})`)
+    })
+  }
+})
+
+// ========================================
 // Version test
 // ========================================
 describe('getLibraryVersion', () => {

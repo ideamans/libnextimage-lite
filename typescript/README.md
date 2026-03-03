@@ -110,4 +110,4 @@ cd typescript && npm install && npm test
 
 ## License
 
-BSD-3-Clause
+MIT License (c) 2025 Ideamans Inc.

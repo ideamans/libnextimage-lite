@@ -778,7 +778,7 @@ ctest
 
 ## License
 
-BSD-3-Clause
+MIT License (c) 2025 Ideamans Inc.
 
 ## Links
 

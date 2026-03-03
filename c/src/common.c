@@ -737,3 +737,307 @@ int nextimage_extract_icc_from_jpeg(
     jpeg_destroy_decompress(&cinfo);
     return 0;
 }
+
+// ========================================
+// Exif orientation extraction from JPEG
+// ========================================
+
+int nextimage_extract_exif_orientation(const uint8_t* data, size_t size) {
+    if (!data || size < 4) return 0;
+
+    // Verify JPEG magic: FF D8
+    if (data[0] != 0xFF || data[1] != 0xD8) return 0;
+
+    // Scan markers for APP1 (FFE1) containing Exif
+    size_t pos = 2;
+    while (pos + 4 < size) {
+        if (data[pos] != 0xFF) return 0;
+
+        uint8_t marker = data[pos + 1];
+
+        // SOS or EOI - stop scanning
+        if (marker == 0xDA || marker == 0xD9) return 0;
+
+        // Marker segment length
+        uint16_t seg_len = ((uint16_t)data[pos + 2] << 8) | data[pos + 3];
+        if (seg_len < 2) return 0;
+
+        // APP1 marker
+        if (marker == 0xE1) {
+            // Check for "Exif\0\0" header
+            if (pos + 10 > size) return 0;
+            if (memcmp(data + pos + 4, "Exif\0\0", 6) != 0) {
+                // Not Exif APP1, skip
+                pos += 2 + seg_len;
+                continue;
+            }
+
+            // TIFF header starts at pos + 10
+            size_t tiff_start = pos + 10;
+            size_t tiff_end = pos + 2 + seg_len;
+            if (tiff_start + 8 > size || tiff_start + 8 > tiff_end) return 0;
+
+            // Byte order: "MM" (big-endian) or "II" (little-endian)
+            int big_endian;
+            if (data[tiff_start] == 'M' && data[tiff_start + 1] == 'M') {
+                big_endian = 1;
+            } else if (data[tiff_start] == 'I' && data[tiff_start + 1] == 'I') {
+                big_endian = 0;
+            } else {
+                return 0;
+            }
+
+            // Read 16-bit and 32-bit values with correct endianness
+            #define READ16(off) (big_endian ? \
+                ((uint16_t)data[(off)] << 8 | data[(off)+1]) : \
+                ((uint16_t)data[(off)+1] << 8 | data[(off)]))
+            #define READ32(off) (big_endian ? \
+                ((uint32_t)data[(off)] << 24 | (uint32_t)data[(off)+1] << 16 | \
+                 (uint32_t)data[(off)+2] << 8 | data[(off)+3]) : \
+                ((uint32_t)data[(off)+3] << 24 | (uint32_t)data[(off)+2] << 16 | \
+                 (uint32_t)data[(off)+1] << 8 | data[(off)]))
+
+            // Verify TIFF magic (42)
+            uint16_t tiff_magic = READ16(tiff_start + 2);
+            if (tiff_magic != 42) return 0;
+
+            // IFD0 offset (relative to TIFF header start)
+            uint32_t ifd_offset = READ32(tiff_start + 4);
+            size_t ifd_pos = tiff_start + ifd_offset;
+
+            if (ifd_pos + 2 > tiff_end) return 0;
+
+            uint16_t num_entries = READ16(ifd_pos);
+            ifd_pos += 2;
+
+            for (uint16_t i = 0; i < num_entries; i++) {
+                if (ifd_pos + 12 > tiff_end) return 0;
+
+                uint16_t tag = READ16(ifd_pos);
+                uint16_t type = READ16(ifd_pos + 2);
+                // uint32_t count = READ32(ifd_pos + 4);
+
+                if (tag == 0x0112) { // Orientation tag
+                    // Type should be SHORT (3)
+                    if (type != 3) return 0;
+
+                    // Value is in the value/offset field (first 2 bytes)
+                    uint16_t orientation = READ16(ifd_pos + 8);
+                    if (orientation >= 1 && orientation <= 8) {
+                        return (int)orientation;
+                    }
+                    return 0;
+                }
+
+                ifd_pos += 12;
+            }
+
+            #undef READ16
+            #undef READ32
+
+            return 0; // No orientation tag found
+        }
+
+        pos += 2 + seg_len;
+    }
+
+    return 0;
+}
+
+// ========================================
+// JPEG auto-orient (rotate based on Exif orientation)
+// ========================================
+
+// Pixel rotation helpers
+static void rotate_pixels_180(
+    const uint8_t* src, int w, int h, int channels,
+    uint8_t* dst)
+{
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            int src_off = (y * w + x) * channels;
+            int dst_off = ((h - 1 - y) * w + (w - 1 - x)) * channels;
+            memcpy(dst + dst_off, src + src_off, channels);
+        }
+    }
+}
+
+static void rotate_pixels_90_cw(
+    const uint8_t* src, int w, int h, int channels,
+    uint8_t* dst, int* out_w, int* out_h)
+{
+    // 90° CW: (x,y) -> (h-1-y, x) in new (h x w) image
+    *out_w = h;
+    *out_h = w;
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            int src_off = (y * w + x) * channels;
+            int nx = h - 1 - y;
+            int ny = x;
+            int dst_off = (ny * (*out_w) + nx) * channels;
+            memcpy(dst + dst_off, src + src_off, channels);
+        }
+    }
+}
+
+static void rotate_pixels_270_cw(
+    const uint8_t* src, int w, int h, int channels,
+    uint8_t* dst, int* out_w, int* out_h)
+{
+    // 270° CW (= 90° CCW): (x,y) -> (y, w-1-x) in new (h x w) image
+    *out_w = h;
+    *out_h = w;
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            int src_off = (y * w + x) * channels;
+            int nx = y;
+            int ny = w - 1 - x;
+            int dst_off = (ny * (*out_w) + nx) * channels;
+            memcpy(dst + dst_off, src + src_off, channels);
+        }
+    }
+}
+
+int nextimage_jpeg_auto_orient(
+    const uint8_t* data, size_t size,
+    NextImageBuffer* output)
+{
+    if (!data || size == 0 || !output) return -1;
+
+    memset(output, 0, sizeof(*output));
+
+    int orientation = nextimage_extract_exif_orientation(data, size);
+
+    // No rotation needed: copy input as-is
+    if (orientation == 0 || orientation == 1) {
+        output->data = (uint8_t*)nextimage_malloc(size);
+        if (!output->data) return -1;
+        memcpy(output->data, data, size);
+        output->size = size;
+        return 0;
+    }
+
+    // Only support orientations 3, 6, 8 (rotation without mirroring)
+    if (orientation != 3 && orientation != 6 && orientation != 8) {
+        // For unsupported orientations (2, 4, 5, 7 = mirror), copy as-is
+        output->data = (uint8_t*)nextimage_malloc(size);
+        if (!output->data) return -1;
+        memcpy(output->data, data, size);
+        output->size = size;
+        return 0;
+    }
+
+    // Decode JPEG to RGB pixels
+    struct jpeg_decompress_struct cinfo;
+    struct jpeg_error_mgr jerr;
+
+    cinfo.err = jpeg_std_error(&jerr);
+    jpeg_create_decompress(&cinfo);
+    jpeg_mem_src(&cinfo, data, (unsigned long)size);
+
+    if (jpeg_read_header(&cinfo, TRUE) != JPEG_HEADER_OK) {
+        jpeg_destroy_decompress(&cinfo);
+        return -1;
+    }
+
+    cinfo.out_color_space = JCS_RGB;
+    jpeg_start_decompress(&cinfo);
+
+    int width = (int)cinfo.output_width;
+    int height = (int)cinfo.output_height;
+    int channels = (int)cinfo.output_components;
+    int stride = width * channels;
+
+    uint8_t* pixels = (uint8_t*)malloc(stride * height);
+    if (!pixels) {
+        jpeg_abort_decompress(&cinfo);
+        jpeg_destroy_decompress(&cinfo);
+        return -1;
+    }
+
+    while (cinfo.output_scanline < cinfo.output_height) {
+        JSAMPROW row = pixels + cinfo.output_scanline * stride;
+        jpeg_read_scanlines(&cinfo, &row, 1);
+    }
+
+    jpeg_finish_decompress(&cinfo);
+    jpeg_destroy_decompress(&cinfo);
+
+    // Allocate buffer for rotated pixels (max size: may swap w/h)
+    int new_w = width, new_h = height;
+    int max_pixel_count = width * height;
+    uint8_t* rotated = (uint8_t*)malloc(max_pixel_count * channels);
+    if (!rotated) {
+        free(pixels);
+        return -1;
+    }
+
+    // Rotate pixels based on orientation
+    switch (orientation) {
+        case 3: // 180°
+            rotate_pixels_180(pixels, width, height, channels, rotated);
+            new_w = width;
+            new_h = height;
+            break;
+        case 6: // 90° CW
+            rotate_pixels_90_cw(pixels, width, height, channels, rotated, &new_w, &new_h);
+            break;
+        case 8: // 270° CW
+            rotate_pixels_270_cw(pixels, width, height, channels, rotated, &new_w, &new_h);
+            break;
+    }
+
+    free(pixels);
+
+    // Re-encode as JPEG with 4:4:4 subsampling, quality 100%
+    // No Exif metadata (orientation is already applied)
+    struct jpeg_compress_struct cinfo_out;
+    struct jpeg_error_mgr jerr_out;
+
+    cinfo_out.err = jpeg_std_error(&jerr_out);
+    jpeg_create_compress(&cinfo_out);
+
+    unsigned char* jpeg_buf = NULL;
+    unsigned long jpeg_size = 0;
+    jpeg_mem_dest(&cinfo_out, &jpeg_buf, &jpeg_size);
+
+    cinfo_out.image_width = (JDIMENSION)new_w;
+    cinfo_out.image_height = (JDIMENSION)new_h;
+    cinfo_out.input_components = channels;
+    cinfo_out.in_color_space = (channels == 1) ? JCS_GRAYSCALE : JCS_RGB;
+
+    jpeg_set_defaults(&cinfo_out);
+    jpeg_set_quality(&cinfo_out, 100, TRUE);
+
+    // 4:4:4 subsampling (H=1, V=1 for all components)
+    for (int i = 0; i < cinfo_out.num_components; i++) {
+        cinfo_out.comp_info[i].h_samp_factor = 1;
+        cinfo_out.comp_info[i].v_samp_factor = 1;
+    }
+
+    jpeg_start_compress(&cinfo_out, TRUE);
+
+    int new_stride = new_w * channels;
+    while (cinfo_out.next_scanline < cinfo_out.image_height) {
+        JSAMPROW row = rotated + cinfo_out.next_scanline * new_stride;
+        jpeg_write_scanlines(&cinfo_out, &row, 1);
+    }
+
+    jpeg_finish_compress(&cinfo_out);
+    jpeg_destroy_compress(&cinfo_out);
+
+    free(rotated);
+
+    // Copy to output buffer
+    output->data = (uint8_t*)nextimage_malloc(jpeg_size);
+    if (!output->data) {
+        free(jpeg_buf);
+        return -1;
+    }
+    memcpy(output->data, jpeg_buf, jpeg_size);
+    output->size = jpeg_size;
+
+    free(jpeg_buf);
+
+    return 0;
+}

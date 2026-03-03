@@ -486,7 +486,7 @@ install(FILES
     include/nextimage.h
     include/webp.h
     include/avif.h
-    include/nextimage_light.h
+    include/nextimage_lite.h
     DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/../lib/include
 )
 
@@ -573,6 +573,11 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
     add_executable(leak_counter_test test/leak_counter_test.c)
     target_link_libraries(leak_counter_test nextimage)
     add_test(NAME LeakCounterTest COMMAND leak_counter_test)
+
+    # Exif Orientation メモリリーク検証テスト
+    add_executable(orientation_leak_test test/orientation_leak_test.c)
+    target_link_libraries(orientation_leak_test nextimage)
+    add_test(NAME OrientationLeakTest COMMAND orientation_leak_test)
 endif()
 
 # Sanitizerビルドのみ: Sanitizer専用テスト
@@ -612,6 +617,11 @@ add_test(NAME DecoderTest COMMAND decoder_test)
 add_executable(icc_test test/icc_test.c)
 target_link_libraries(icc_test nextimage)
 add_test(NAME ICCTest COMMAND icc_test)
+
+# Exif Orientation 自動回転テスト
+add_executable(orientation_test test/orientation_test.c)
+target_link_libraries(orientation_test nextimage)
+add_test(NAME OrientationTest COMMAND orientation_test)
 
 # ========================================
 # 動的ライブラリのテスト

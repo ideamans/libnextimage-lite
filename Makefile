@@ -29,9 +29,9 @@ build-c:
 
 test-c: build-c
 	@echo "Running C tests..."
-	@cd c/build && $(MAKE) basic_test simple_test command_interface_test decoder_test header_test icc_test
+	@cd c/build && $(MAKE) basic_test simple_test command_interface_test decoder_test header_test icc_test orientation_test
 	@echo "Running available tests..."
-	@cd c/build && ./basic_test && ./simple_test && ./command_interface_test && ./decoder_test && ./header_test && ./icc_test
+	@cd c/build && ./basic_test && ./simple_test && ./command_interface_test && ./decoder_test && ./header_test && ./icc_test && ./orientation_test
 	@echo "C tests completed"
 
 test-compat: build-c
