@@ -12,6 +12,7 @@ jobs:
   build-c-library:
     name: Build C Library (${{ matrix.os }})
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
