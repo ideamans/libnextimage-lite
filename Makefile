@@ -96,7 +96,7 @@ copy-libs-local:
 			exit 1; \
 		fi; \
 		SHARED_EXT="so"; \
-	elif [ "$$PLATFORM" = "mingw"* ] || [ "$$PLATFORM" = "msys"* ]; then \
+	elif echo "$$PLATFORM" | grep -qE "^(mingw|msys)"; then \
 		PLATFORM_NAME="windows-amd64"; \
 		SHARED_EXT="dll"; \
 	else \
