@@ -281,6 +281,163 @@ func TestLight_AvifToLegacy_Lossless(t *testing.T) {
 }
 
 // ========================================
+// ICC profile preservation tests
+// ========================================
+
+// hasJPEGICCMarker checks if a JPEG contains APP2 ICC_PROFILE markers
+func hasJPEGICCMarker(data []byte) bool {
+	marker := []byte("ICC_PROFILE")
+	for i := 0; i+len(marker) < len(data); i++ {
+		if data[i] == 0xFF && data[i+1] == 0xE2 { // APP2
+			// Check for ICC_PROFILE signature after marker length
+			if i+4+len(marker) < len(data) {
+				match := true
+				for j := 0; j < len(marker); j++ {
+					if data[i+4+j] != marker[j] {
+						match = false
+						break
+					}
+				}
+				if match {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// hasPNGICCChunk checks if a PNG contains an iCCP chunk
+func hasPNGICCChunk(data []byte) bool {
+	// PNG iCCP chunk type: 69 43 43 50
+	iccp := []byte("iCCP")
+	for i := 8; i+8 < len(data); i++ {
+		if data[i+4] == iccp[0] && data[i+5] == iccp[1] &&
+			data[i+6] == iccp[2] && data[i+7] == iccp[3] {
+			return true
+		}
+	}
+	return false
+}
+
+func TestLight_ICC_JPEG_to_AVIF_Roundtrip(t *testing.T) {
+	// Read JPEG with ICC profile
+	jpegData := readTestFile(t, "icc", "srgb.jpg")
+
+	// Verify input has ICC
+	if !hasJPEGICCMarker(jpegData) {
+		t.Fatal("Input JPEG should have ICC profile")
+	}
+
+	// JPEG -> AVIF
+	avifOut := LegacyToAvif(ConvertInput{Data: jpegData, Quality: 60, MinQuantizer: -1, MaxQuantizer: -1})
+	if avifOut.Error != nil {
+		t.Fatalf("LegacyToAvif failed: %v", avifOut.Error)
+	}
+	if avifOut.MimeType != "image/avif" {
+		t.Errorf("Expected image/avif, got %s", avifOut.MimeType)
+	}
+
+	// AVIF -> JPEG
+	jpegOut := AvifToLegacy(ConvertInput{Data: avifOut.Data, Quality: -1, MinQuantizer: -1, MaxQuantizer: -1})
+	if jpegOut.Error != nil {
+		t.Fatalf("AvifToLegacy failed: %v", jpegOut.Error)
+	}
+	if jpegOut.MimeType != "image/jpeg" {
+		t.Errorf("Expected image/jpeg, got %s", jpegOut.MimeType)
+	}
+
+	// Verify output JPEG has ICC profile
+	if !hasJPEGICCMarker(jpegOut.Data) {
+		t.Error("Output JPEG should have ICC profile after roundtrip")
+	}
+	t.Logf("JPEG(ICC)->AVIF->JPEG(ICC): %d -> %d -> %d bytes", len(jpegData), len(avifOut.Data), len(jpegOut.Data))
+}
+
+func TestLight_ICC_PNG_to_AVIF_Roundtrip(t *testing.T) {
+	// Read PNG with ICC profile
+	pngData := readTestFile(t, "icc", "srgb.png")
+
+	// Verify input has ICC
+	if !hasPNGICCChunk(pngData) {
+		t.Fatal("Input PNG should have ICC profile")
+	}
+
+	// PNG -> AVIF (lossless)
+	avifOut := LegacyToAvif(ConvertInput{Data: pngData, Quality: -1, MinQuantizer: -1, MaxQuantizer: -1})
+	if avifOut.Error != nil {
+		t.Fatalf("LegacyToAvif failed: %v", avifOut.Error)
+	}
+
+	// AVIF -> PNG (lossless -> PNG)
+	pngOut := AvifToLegacy(ConvertInput{Data: avifOut.Data, Quality: -1, MinQuantizer: -1, MaxQuantizer: -1})
+	if pngOut.Error != nil {
+		t.Fatalf("AvifToLegacy failed: %v", pngOut.Error)
+	}
+	if pngOut.MimeType != "image/png" {
+		t.Errorf("Expected image/png, got %s", pngOut.MimeType)
+	}
+
+	// Verify output PNG has ICC profile
+	if !hasPNGICCChunk(pngOut.Data) {
+		t.Error("Output PNG should have ICC profile after roundtrip")
+	}
+	t.Logf("PNG(ICC)->AVIF->PNG(ICC): %d -> %d -> %d bytes", len(pngData), len(avifOut.Data), len(pngOut.Data))
+}
+
+func TestLight_ICC_NoICC_JPEG_Roundtrip(t *testing.T) {
+	// Read JPEG without ICC
+	jpegData := readTestFile(t, "icc", "no-icc.jpg")
+
+	// Verify no ICC in input
+	if hasJPEGICCMarker(jpegData) {
+		t.Fatal("Input JPEG should NOT have ICC profile")
+	}
+
+	// JPEG -> AVIF -> JPEG
+	avifOut := LegacyToAvif(ConvertInput{Data: jpegData, Quality: 60, MinQuantizer: -1, MaxQuantizer: -1})
+	if avifOut.Error != nil {
+		t.Fatalf("LegacyToAvif failed: %v", avifOut.Error)
+	}
+
+	jpegOut := AvifToLegacy(ConvertInput{Data: avifOut.Data, Quality: -1, MinQuantizer: -1, MaxQuantizer: -1})
+	if jpegOut.Error != nil {
+		t.Fatalf("AvifToLegacy failed: %v", jpegOut.Error)
+	}
+
+	// Verify no ICC in output
+	if hasJPEGICCMarker(jpegOut.Data) {
+		t.Error("Output JPEG should NOT have ICC profile")
+	}
+	t.Logf("JPEG(no-ICC)->AVIF->JPEG(no-ICC): %d -> %d -> %d bytes", len(jpegData), len(avifOut.Data), len(jpegOut.Data))
+}
+
+func TestLight_ICC_DisplayP3_JPEG_Roundtrip(t *testing.T) {
+	// Read JPEG with Display P3 ICC profile
+	jpegData := readTestFile(t, "icc", "display-p3.jpg")
+
+	if !hasJPEGICCMarker(jpegData) {
+		t.Fatal("Input JPEG should have Display P3 ICC profile")
+	}
+
+	// JPEG -> AVIF -> JPEG
+	avifOut := LegacyToAvif(ConvertInput{Data: jpegData, Quality: 60, MinQuantizer: -1, MaxQuantizer: -1})
+	if avifOut.Error != nil {
+		t.Fatalf("LegacyToAvif failed: %v", avifOut.Error)
+	}
+
+	jpegOut := AvifToLegacy(ConvertInput{Data: avifOut.Data, Quality: -1, MinQuantizer: -1, MaxQuantizer: -1})
+	if jpegOut.Error != nil {
+		t.Fatalf("AvifToLegacy failed: %v", jpegOut.Error)
+	}
+
+	if !hasJPEGICCMarker(jpegOut.Data) {
+		t.Error("Output JPEG should have ICC profile (Display P3)")
+	}
+	t.Logf("JPEG(P3)->AVIF->JPEG(P3): %d -> %d -> %d bytes", len(jpegData), len(avifOut.Data), len(jpegOut.Data))
+}
+
+// ========================================
 // Error handling tests
 // ========================================
 func TestLight_ErrorHandling(t *testing.T) {

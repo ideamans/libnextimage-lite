@@ -29,10 +29,32 @@ build-c:
 
 test-c: build-c
 	@echo "Running C tests..."
-	@cd c/build && $(MAKE) basic_test simple_test command_interface_test decoder_test header_test
+	@cd c/build && $(MAKE) basic_test simple_test command_interface_test decoder_test header_test icc_test
 	@echo "Running available tests..."
-	@cd c/build && ./basic_test && ./simple_test && ./command_interface_test && ./decoder_test && ./header_test
-	@echo "C tests completed (note: some test programs may have compilation issues)"
+	@cd c/build && ./basic_test && ./simple_test && ./command_interface_test && ./decoder_test && ./header_test && ./icc_test
+	@echo "C tests completed"
+
+test-compat: build-c
+	@echo "Running CLI compatibility tests (binary exact match)..."
+	@echo "Prerequisites: run 'scripts/build-cli-tools.sh' first"
+	@cd c/build && $(MAKE) cwebp_compat_test dwebp_compat_test gif2webp_compat_test avifenc_compat_test avifdec_compat_test
+	@echo ""
+	@echo "=== cwebp compat ==="
+	@cd c/build && ./cwebp_compat_test
+	@echo ""
+	@echo "=== dwebp compat ==="
+	@cd c/build && ./dwebp_compat_test
+	@echo ""
+	@echo "=== gif2webp compat ==="
+	@cd c/build && ./gif2webp_compat_test
+	@echo ""
+	@echo "=== avifenc compat ==="
+	@cd c/build && ./avifenc_compat_test
+	@echo ""
+	@echo "=== avifdec compat ==="
+	@cd c/build && ./avifdec_compat_test
+	@echo ""
+	@echo "All CLI compatibility tests completed"
 
 install-c:
 	@echo "Building and installing C library (static and shared)..."

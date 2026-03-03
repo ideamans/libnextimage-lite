@@ -173,6 +173,81 @@ describe('avifToLegacy', () => {
 })
 
 // ========================================
+// ICC profile preservation tests
+// ========================================
+
+function hasJPEGICCMarker(data: Buffer): boolean {
+  const marker = Buffer.from('ICC_PROFILE')
+  for (let i = 0; i + marker.length < data.length; i++) {
+    if (data[i] === 0xff && data[i + 1] === 0xe2) {
+      // APP2 marker found, check for ICC_PROFILE signature after length bytes
+      if (i + 4 + marker.length < data.length) {
+        if (data.subarray(i + 4, i + 4 + marker.length).equals(marker)) {
+          return true
+        }
+      }
+    }
+  }
+  return false
+}
+
+function hasPNGICCChunk(data: Buffer): boolean {
+  const iccp = Buffer.from('iCCP')
+  for (let i = 8; i + 8 < data.length; i++) {
+    if (data[i + 4] === iccp[0] && data[i + 5] === iccp[1] && data[i + 6] === iccp[2] && data[i + 7] === iccp[3]) {
+      return true
+    }
+  }
+  return false
+}
+
+describe('ICC profile preservation', () => {
+  it('should preserve JPEG ICC through AVIF roundtrip', () => {
+    const jpeg = readTestFile('icc', 'srgb.jpg')
+    assert.ok(hasJPEGICCMarker(jpeg), 'Input JPEG should have ICC')
+
+    const avif = legacyToAvif({ data: jpeg, quality: 60 })
+    assert.strictEqual(avif.mimeType, 'image/avif')
+
+    const output = avifToLegacy({ data: avif.data })
+    assert.strictEqual(output.mimeType, 'image/jpeg')
+    assert.ok(hasJPEGICCMarker(output.data), 'Output JPEG should have ICC after roundtrip')
+  })
+
+  it('should preserve PNG ICC through AVIF roundtrip', () => {
+    const png = readTestFile('icc', 'srgb.png')
+    assert.ok(hasPNGICCChunk(png), 'Input PNG should have ICC')
+
+    const avif = legacyToAvif({ data: png })
+    assert.strictEqual(avif.mimeType, 'image/avif')
+
+    const output = avifToLegacy({ data: avif.data })
+    assert.strictEqual(output.mimeType, 'image/png')
+    assert.ok(hasPNGICCChunk(output.data), 'Output PNG should have ICC after roundtrip')
+  })
+
+  it('should not add ICC when input has none', () => {
+    const jpeg = readTestFile('icc', 'no-icc.jpg')
+    assert.ok(!hasJPEGICCMarker(jpeg), 'Input JPEG should not have ICC')
+
+    const avif = legacyToAvif({ data: jpeg, quality: 60 })
+    const output = avifToLegacy({ data: avif.data })
+    assert.strictEqual(output.mimeType, 'image/jpeg')
+    assert.ok(!hasJPEGICCMarker(output.data), 'Output JPEG should not have ICC')
+  })
+
+  it('should preserve Display P3 ICC through AVIF roundtrip', () => {
+    const jpeg = readTestFile('icc', 'display-p3.jpg')
+    assert.ok(hasJPEGICCMarker(jpeg), 'Input JPEG should have Display P3 ICC')
+
+    const avif = legacyToAvif({ data: jpeg, quality: 60 })
+    const output = avifToLegacy({ data: avif.data })
+    assert.strictEqual(output.mimeType, 'image/jpeg')
+    assert.ok(hasJPEGICCMarker(output.data), 'Output JPEG should have ICC (Display P3)')
+  })
+})
+
+// ========================================
 // Version test
 // ========================================
 describe('getLibraryVersion', () => {

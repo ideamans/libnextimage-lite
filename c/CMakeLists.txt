@@ -608,6 +608,11 @@ add_executable(decoder_test test/decoder_test.c)
 target_link_libraries(decoder_test nextimage)
 add_test(NAME DecoderTest COMMAND decoder_test)
 
+# ICC プロファイル自動抽出テスト
+add_executable(icc_test test/icc_test.c)
+target_link_libraries(icc_test nextimage)
+add_test(NAME ICCTest COMMAND icc_test)
+
 # ========================================
 # 動的ライブラリのテスト
 # ========================================
@@ -627,3 +632,33 @@ add_test(NAME SimpleTestShared COMMAND simple_test_shared)
 # add_executable(avif_test_shared test/avif_test.c)
 # target_link_libraries(avif_test_shared nextimage_shared)
 # add_test(NAME AVIFTestShared COMMAND avif_test_shared)
+
+# ========================================
+# CLI互換性テスト（バイナリ完全一致）
+# ========================================
+# bin/cwebp, bin/dwebp, etc. が必要。scripts/build-cli-tools.sh で事前ビルド。
+
+# cwebp CLI互換性テスト
+add_executable(cwebp_compat_test test/cwebp_compat_test.c)
+target_link_libraries(cwebp_compat_test nextimage)
+add_test(NAME CWebPCompatTest COMMAND cwebp_compat_test)
+
+# dwebp CLI互換性テスト
+add_executable(dwebp_compat_test test/dwebp_compat_test.c)
+target_link_libraries(dwebp_compat_test nextimage)
+add_test(NAME DWebPCompatTest COMMAND dwebp_compat_test)
+
+# gif2webp CLI互換性テスト
+add_executable(gif2webp_compat_test test/gif2webp_compat_test.c)
+target_link_libraries(gif2webp_compat_test nextimage)
+add_test(NAME GIF2WebPCompatTest COMMAND gif2webp_compat_test)
+
+# avifenc CLI互換性テスト
+add_executable(avifenc_compat_test test/avifenc_compat_test.c)
+target_link_libraries(avifenc_compat_test nextimage)
+add_test(NAME AVIFEncCompatTest COMMAND avifenc_compat_test)
+
+# avifdec CLI互換性テスト
+add_executable(avifdec_compat_test test/avifdec_compat_test.c)
+target_link_libraries(avifdec_compat_test nextimage)
+add_test(NAME AVIFDecCompatTest COMMAND avifdec_compat_test)

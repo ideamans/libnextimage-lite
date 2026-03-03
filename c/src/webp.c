@@ -19,9 +19,6 @@
 // GIF helper functions from libwebp examples
 #include "../../deps/libwebp/examples/gifdec.h"
 
-// stb_image_write for PNG/JPEG encoding
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "../../deps/stb/stb_image_write.h"
 
 // デフォルトエンコードオプション (全WebPConfigフィールドに対応)
 void nextimage_webp_default_encode_options(NextImageWebPEncodeOptions* options) {
@@ -1401,9 +1398,6 @@ void cwebp_free_command(CWebPCommand* cmd) {
     }
 }
 
-// stb_image_write用のコールバック - NextImageBufferに追記
-// stbi_write_to_buffer_callback は internal.h の nextimage_stbi_write_callback を使用
-
 // DWebP実装（NextImageWebPDecoderを内部で使用）
 struct DWebPCommand {
     NextImageWebPDecoder* decoder;
@@ -1480,12 +1474,29 @@ NextImageStatus dwebp_run_command(
     // 出力バッファを初期化
     memset(output, 0, sizeof(NextImageBuffer));
 
-    // WebPをデコード
+    // WebPGetFeaturesでhas_alphaを確認し、RGB/RGBAを自動選択
+    // CLI dwebpと同じ動作: has_alpha → RGBA(4ch), !has_alpha → RGB(3ch)
+    WebPBitstreamFeatures features;
+    VP8StatusCode vp8_status = WebPGetFeatures(webp_data, webp_size, &features);
+    if (vp8_status != VP8_STATUS_OK) {
+        nextimage_set_error("Failed to get WebP features: %d", vp8_status);
+        return NEXTIMAGE_ERROR_DECODE_FAILED;
+    }
+
+    // デコーダーのオプションをコピーして、フォーマットをhas_alphaに応じて設定
+    NextImageWebPDecodeOptions decode_opts = cmd->decoder->options;
+    if (features.has_alpha) {
+        decode_opts.format = NEXTIMAGE_FORMAT_RGBA;
+    } else {
+        decode_opts.format = NEXTIMAGE_FORMAT_RGB;
+    }
+
+    // WebPをデコード（RGB/RGBA自動選択で）
     NextImageDecodeBuffer decode_buf;
-    NextImageStatus status = nextimage_webp_decoder_decode(
-        cmd->decoder,
+    NextImageStatus status = nextimage_webp_decode_alloc(
         webp_data,
         webp_size,
+        &decode_opts,
         &decode_buf
     );
 
@@ -1494,7 +1505,6 @@ NextImageStatus dwebp_run_command(
     }
 
     // デコード結果をPNG/JPEGに変換
-    // stb_image_writeはRGB/RGBAのみサポート
     int channels = 0;
     const uint8_t* pixel_data = NULL;
     uint8_t* converted_data = NULL;  // BGRA変換用の一時バッファ
@@ -1506,8 +1516,7 @@ NextImageStatus dwebp_run_command(
         channels = 3;
         pixel_data = decode_buf.data;
     } else if (decode_buf.format == NEXTIMAGE_FORMAT_BGRA) {
-        // BGRAはstb_image_writeでサポートされていないため、
-        // RGBAに変換する
+        // BGRAをRGBAに変換する
         channels = 4;
         converted_data = (uint8_t*)nextimage_malloc(decode_buf.data_size);
         if (!converted_data) {
@@ -1530,28 +1539,59 @@ NextImageStatus dwebp_run_command(
         return NEXTIMAGE_ERROR_UNSUPPORTED;
     }
 
-    // PNG or JPEGにエンコード
+    // PNG or JPEGにエンコード（libpng/libjpeg使用）
     int result = 0;
     if (cmd->output_format == DWEBP_OUTPUT_JPEG) {
-        // JPEGにエンコード
-        result = stbi_write_jpg_to_func(
-            nextimage_stbi_write_callback,
+        // JPEGにエンコード（libjpeg）
+        // JPEG は RGB(3ch) のみサポート。RGBA の場合は RGB に変換
+        const uint8_t* jpeg_pixels = pixel_data;
+        uint8_t* rgb_converted = NULL;
+        int jpeg_channels = channels;
+
+        if (channels == 4) {
+            // RGBA → RGB 変換（アルファチャンネルを除去）
+            size_t rgb_size = (size_t)decode_buf.width * (size_t)decode_buf.height * 3;
+            rgb_converted = (uint8_t*)nextimage_malloc(rgb_size);
+            if (!rgb_converted) {
+                if (converted_data) nextimage_free(converted_data);
+                nextimage_free_decode_buffer(&decode_buf);
+                nextimage_set_error("Failed to allocate RGB conversion buffer for JPEG");
+                return NEXTIMAGE_ERROR_OUT_OF_MEMORY;
+            }
+            for (int y = 0; y < decode_buf.height; y++) {
+                for (int x = 0; x < decode_buf.width; x++) {
+                    size_t src_idx = (size_t)y * (size_t)decode_buf.stride + (size_t)x * 4;
+                    size_t dst_idx = ((size_t)y * (size_t)decode_buf.width + (size_t)x) * 3;
+                    rgb_converted[dst_idx + 0] = pixel_data[src_idx + 0];
+                    rgb_converted[dst_idx + 1] = pixel_data[src_idx + 1];
+                    rgb_converted[dst_idx + 2] = pixel_data[src_idx + 2];
+                }
+            }
+            jpeg_pixels = rgb_converted;
+            jpeg_channels = 3;
+        }
+
+        result = nextimage_write_jpeg_to_buffer(
             output,
+            jpeg_pixels,
             decode_buf.width,
             decode_buf.height,
-            channels,
-            pixel_data,
+            jpeg_channels,
+            decode_buf.width * jpeg_channels,
             cmd->jpeg_quality
         );
+
+        if (rgb_converted) {
+            nextimage_free(rgb_converted);
+        }
     } else {
-        // PNGにエンコード（デフォルト）
-        result = stbi_write_png_to_func(
-            nextimage_stbi_write_callback,
+        // PNGにエンコード（libpng）
+        result = nextimage_write_png_to_buffer(
             output,
+            pixel_data,
             decode_buf.width,
             decode_buf.height,
             channels,
-            pixel_data,
             (int)decode_buf.stride
         );
     }
@@ -1564,7 +1604,7 @@ NextImageStatus dwebp_run_command(
     // デコードバッファを解放
     nextimage_free_decode_buffer(&decode_buf);
 
-    if (!result) {
+    if (result != 0) {
         nextimage_free_buffer(output);
         nextimage_set_error("Failed to encode output (format: %s)",
                            cmd->output_format == DWEBP_OUTPUT_JPEG ? "JPEG" : "PNG");

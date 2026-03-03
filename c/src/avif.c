@@ -14,8 +14,6 @@
 #include "webp/encode.h"
 #include "webp/decode.h"
 
-// stb_image_write for PNG/JPEG encoding (implementation is in webp.c)
-#include "../../deps/stb/stb_image_write.h"
 
 // Platform-specific headers for CPU count query
 #if defined(_WIN32)
@@ -257,11 +255,43 @@ NextImageStatus nextimage_avif_encode_alloc(
         return NEXTIMAGE_ERROR_OUT_OF_MEMORY;
     }
 
+    // Auto-extract ICC profile from input image if not explicitly provided
+    avifBool auto_icc_applied = AVIF_FALSE;
+    if (!options->icc_data || options->icc_size == 0) {
+        uint8_t* auto_icc_data = NULL;
+        size_t auto_icc_size = 0;
+
+        // Detect format by magic bytes and extract ICC
+        if (input_size >= 8 && input_data[0] == 0x89 && input_data[1] == 0x50 &&
+            input_data[2] == 0x4E && input_data[3] == 0x47) {
+            // PNG magic: 89 50 4E 47
+            nextimage_extract_icc_from_png(input_data, input_size, &auto_icc_data, &auto_icc_size);
+        } else if (input_size >= 3 && input_data[0] == 0xFF && input_data[1] == 0xD8 && input_data[2] == 0xFF) {
+            // JPEG magic: FF D8 FF
+            nextimage_extract_icc_from_jpeg(input_data, input_size, &auto_icc_data, &auto_icc_size);
+        }
+
+        // Apply auto-extracted ICC to the image (avifImageSetProfileICC copies the data)
+        if (auto_icc_data && auto_icc_size > 0) {
+            avifResult icc_result = avifImageSetProfileICC(image, auto_icc_data, auto_icc_size);
+            free(auto_icc_data);
+            if (icc_result != AVIF_RESULT_OK) {
+                avifImageDestroy(image);
+                WebPPictureFree(&picture);
+                nextimage_set_error("Failed to set auto-extracted ICC profile: %s", avifResultToString(icc_result));
+                return NEXTIMAGE_ERROR_ENCODE_FAILED;
+            }
+            auto_icc_applied = AVIF_TRUE;
+        } else {
+            free(auto_icc_data); // NULL-safe
+        }
+    }
+
     // Set color properties from options (CICP/nclx)
     // Use options values if specified, otherwise use defaults
     // SPECIAL CASE: If ICC profile is provided, use BT.470BG (2) instead of BT.709 (1)
     // to match avifenc behavior with ICC profiles
-    avifBool has_icc = (options->icc_data && options->icc_size > 0);
+    avifBool has_icc = (options->icc_data && options->icc_size > 0) || auto_icc_applied;
 
     if (options->color_primaries >= 0) {
         image->colorPrimaries = (avifColorPrimaries)options->color_primaries;
@@ -964,8 +994,6 @@ void avifenc_free_command(AVIFEncCommand* cmd) {
     }
 }
 
-// stbi_write_to_buffer_callback は internal.h の nextimage_stbi_write_callback を使用
-
 // AVIFDec実装（NextImageAVIFDecoderを内部で使用）
 struct AVIFDecCommand {
     NextImageAVIFDecoder* decoder;
@@ -1023,6 +1051,94 @@ AVIFDecCommand* avifdec_new_command(const AVIFDecOptions* options) {
     return cmd;
 }
 
+// AVIFメタデータからPNGメタデータを構築するヘルパー
+// avifPNGWrite (avifpng.c:636-722) のチャンクロジックを再現
+static void avifdec_build_png_metadata(
+    const avifImage* image,
+    NextImagePNGMetadata* meta)
+{
+    memset(meta, 0, sizeof(NextImagePNGMetadata));
+
+    // ICC profile
+    if (image->icc.data && image->icc.size > 0) {
+        meta->icc_data = image->icc.data;
+        meta->icc_size = image->icc.size;
+    }
+
+    // sRGB判定 (avifpng.c:643-646)
+    int is_srgb = (image->colorPrimaries == AVIF_COLOR_PRIMARIES_SRGB) &&
+                  (image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SRGB);
+    meta->is_srgb = is_srgb;
+
+    if (!is_srgb) {
+        // cHRM: 色度座標 (avifpng.c:650-662)
+        if (image->colorPrimaries != AVIF_COLOR_PRIMARIES_UNKNOWN &&
+            image->colorPrimaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
+            float p[8]; // rX, rY, gX, gY, bX, bY, wX, wY
+            avifColorPrimariesGetValues(image->colorPrimaries, p);
+            meta->has_chrm = 1;
+            meta->chrm_white_x = (double)p[6];
+            meta->chrm_white_y = (double)p[7];
+            meta->chrm_red_x   = (double)p[0];
+            meta->chrm_red_y   = (double)p[1];
+            meta->chrm_green_x = (double)p[2];
+            meta->chrm_green_y = (double)p[3];
+            meta->chrm_blue_x  = (double)p[4];
+            meta->chrm_blue_y  = (double)p[5];
+        }
+
+        // gAMA: ガンマ値 (avifpng.c:664-669)
+        float gamma;
+        if (avifTransferCharacteristicsGetGamma(
+                image->transferCharacteristics, &gamma) == AVIF_RESULT_OK) {
+            meta->has_gama = 1;
+            meta->gama_value = 1.0 / (double)gamma;
+        }
+    }
+
+    // Exif
+    if (image->exif.data && image->exif.size > 0) {
+        meta->exif_data = image->exif.data;
+        meta->exif_size = image->exif.size;
+    }
+
+    // XMP
+    if (image->xmp.data && image->xmp.size > 0) {
+        meta->xmp_data = image->xmp.data;
+        meta->xmp_size = image->xmp.size;
+    }
+
+    // cICP: ICCがない場合のみ (avifpng.c:712-722)
+    if (!meta->icc_data) {
+        meta->write_cicp = 1;
+        meta->cicp_primaries  = (uint8_t)image->colorPrimaries;
+        meta->cicp_transfer   = (uint8_t)image->transferCharacteristics;
+        meta->cicp_matrix     = (uint8_t)AVIF_MATRIX_COEFFICIENTS_IDENTITY;
+        meta->cicp_full_range = 1;
+    }
+}
+
+// AVIFメタデータからJPEGメタデータを構築するヘルパー
+static void avifdec_build_jpeg_metadata(
+    const avifImage* image,
+    NextImageJPEGMetadata* meta)
+{
+    memset(meta, 0, sizeof(NextImageJPEGMetadata));
+
+    if (image->icc.data && image->icc.size > 0) {
+        meta->icc_data = image->icc.data;
+        meta->icc_size = image->icc.size;
+    }
+    if (image->exif.data && image->exif.size > 0) {
+        meta->exif_data = image->exif.data;
+        meta->exif_size = image->exif.size;
+    }
+    if (image->xmp.data && image->xmp.size > 0) {
+        meta->xmp_data = image->xmp.data;
+        meta->xmp_size = image->xmp.size;
+    }
+}
+
 NextImageStatus avifdec_run_command(
     AVIFDecCommand* cmd,
     const uint8_t* avif_data,
@@ -1039,94 +1155,162 @@ NextImageStatus avifdec_run_command(
         return NEXTIMAGE_ERROR_INVALID_PARAM;
     }
 
-    // 出力バッファを初期化
     memset(output, 0, sizeof(NextImageBuffer));
 
-    // AVIFをデコード
-    NextImageDecodeBuffer decode_buf;
-    NextImageStatus status = nextimage_avif_decoder_decode(
-        cmd->decoder,
-        avif_data,
-        avif_size,
-        &decode_buf
-    );
+    // ========================================
+    // avifPNGWrite/avifJPEGWrite と同じ手順で AVIF をデコード
+    // ========================================
 
-    if (status != NEXTIMAGE_OK) {
-        return status;
+    const NextImageAVIFDecodeOptions* opts = &cmd->decoder->options;
+
+    avifDecoder* decoder = avifDecoderCreate();
+    if (!decoder) {
+        nextimage_set_error("Failed to create AVIF decoder");
+        return NEXTIMAGE_ERROR_OUT_OF_MEMORY;
     }
 
-    // デコード結果をPNG/JPEGに変換
-    // stb_image_writeはRGB/RGBAのみサポート
-    int channels = 0;
-    const uint8_t* pixel_data = NULL;
-    uint8_t* converted_data = NULL;  // BGRA変換用の一時バッファ
+    decoder->ignoreExif = opts->ignore_exif ? AVIF_TRUE : AVIF_FALSE;
+    decoder->ignoreXMP  = opts->ignore_xmp  ? AVIF_TRUE : AVIF_FALSE;
+    decoder->imageSizeLimit = opts->image_size_limit;
+    decoder->imageDimensionLimit = opts->image_dimension_limit;
+    decoder->maxThreads = opts->use_threads ? queryCPUCount() : 1;
+    decoder->strictFlags = opts->strict_flags ? AVIF_STRICT_ENABLED : AVIF_STRICT_DISABLED;
 
-    if (decode_buf.format == NEXTIMAGE_FORMAT_RGBA) {
-        channels = 4;
-        pixel_data = decode_buf.data;
-    } else if (decode_buf.format == NEXTIMAGE_FORMAT_RGB) {
+    avifResult result = avifDecoderSetIOMemory(decoder, avif_data, avif_size);
+    if (result != AVIF_RESULT_OK) {
+        avifDecoderDestroy(decoder);
+        nextimage_set_error("Failed to set AVIF decoder input: %s", avifResultToString(result));
+        return NEXTIMAGE_ERROR_DECODE_FAILED;
+    }
+
+    result = avifDecoderParse(decoder);
+    if (result != AVIF_RESULT_OK) {
+        avifDecoderDestroy(decoder);
+        nextimage_set_error("Failed to parse AVIF: %s", avifResultToString(result));
+        return NEXTIMAGE_ERROR_DECODE_FAILED;
+    }
+
+    result = avifDecoderNextImage(decoder);
+    if (result != AVIF_RESULT_OK) {
+        avifDecoderDestroy(decoder);
+        nextimage_set_error("Failed to decode AVIF image: %s", avifResultToString(result));
+        return NEXTIMAGE_ERROR_DECODE_FAILED;
+    }
+
+    avifImage* image = decoder->image;
+
+    // ========================================
+    // RGB/RGBA 自動選択（avifPNGWrite:567-598 と同一ロジック）
+    // ========================================
+
+    int is_opaque = avifImageIsOpaque(image);
+    int channels;
+    avifRGBFormat rgb_format;
+
+    if (is_opaque) {
         channels = 3;
-        pixel_data = decode_buf.data;
-    } else if (decode_buf.format == NEXTIMAGE_FORMAT_BGRA) {
-        // BGRAはstb_image_writeでサポートされていないため、
-        // RGBAに変換する
+        rgb_format = AVIF_RGB_FORMAT_RGB;
+    } else {
         channels = 4;
-        converted_data = (uint8_t*)nextimage_malloc(decode_buf.data_size);
-        if (!converted_data) {
-            nextimage_free_decode_buffer(&decode_buf);
-            nextimage_set_error("Failed to allocate BGRA conversion buffer");
-            return NEXTIMAGE_ERROR_OUT_OF_MEMORY;
-        }
-
-        // BGRA → RGBA 変換（B と R を入れ替える）
-        for (size_t i = 0; i < decode_buf.data_size; i += 4) {
-            converted_data[i + 0] = decode_buf.data[i + 2]; // R <- B
-            converted_data[i + 1] = decode_buf.data[i + 1]; // G <- G
-            converted_data[i + 2] = decode_buf.data[i + 0]; // B <- R
-            converted_data[i + 3] = decode_buf.data[i + 3]; // A <- A
-        }
-        pixel_data = converted_data;
-    } else {
-        nextimage_free_decode_buffer(&decode_buf);
-        nextimage_set_error("Unsupported pixel format for encoding: %d", decode_buf.format);
-        return NEXTIMAGE_ERROR_UNSUPPORTED;
+        rgb_format = AVIF_RGB_FORMAT_RGBA;
     }
 
-    // PNG or JPEGにエンコード
-    int result = 0;
+    // ビット深度: avifPNGWrite:546-549 と同一ロジック
+    // PNG: 元画像が > 8bit なら 16bit、それ以外は 8bit
+    // JPEG: 常に 8bit (avifJPEGWrite は rgb.depth = 8 固定)
+    int rgbDepth;
     if (cmd->output_format == AVIFDEC_OUTPUT_JPEG) {
-        // JPEGにエンコード
-        result = stbi_write_jpg_to_func(
-            nextimage_stbi_write_callback,
-            output,
-            decode_buf.width,
-            decode_buf.height,
-            channels,
-            pixel_data,
-            cmd->jpeg_quality
-        );
+        rgbDepth = 8;
     } else {
-        // PNGにエンコード（デフォルト）
-        result = stbi_write_png_to_func(
-            nextimage_stbi_write_callback,
-            output,
-            decode_buf.width,
-            decode_buf.height,
-            channels,
-            pixel_data,
-            (int)decode_buf.stride
+        rgbDepth = (image->depth > 8) ? 16 : 8;
+    }
+
+    // YUV → RGB 変換
+    avifRGBImage rgb;
+    avifRGBImageSetDefaults(&rgb, image);
+    rgb.format = rgb_format;
+    rgb.depth = (uint32_t)rgbDepth;
+    rgb.chromaUpsampling = (avifChromaUpsampling)opts->chroma_upsampling;
+
+    avifResult alloc_result = avifRGBImageAllocatePixels(&rgb);
+    if (alloc_result != AVIF_RESULT_OK) {
+        avifDecoderDestroy(decoder);
+        nextimage_set_error("Failed to allocate RGB buffer: %s", avifResultToString(alloc_result));
+        return NEXTIMAGE_ERROR_OUT_OF_MEMORY;
+    }
+
+    result = avifImageYUVToRGB(image, &rgb);
+    if (result != AVIF_RESULT_OK) {
+        avifRGBImageFreePixels(&rgb);
+        avifDecoderDestroy(decoder);
+        nextimage_set_error("YUV to RGB conversion failed: %s", avifResultToString(result));
+        return NEXTIMAGE_ERROR_DECODE_FAILED;
+    }
+
+    // ========================================
+    // PNG/JPEG エンコード（メタデータ付き）
+    // ========================================
+
+    int encode_result = 0;
+    if (cmd->output_format == AVIFDEC_OUTPUT_JPEG) {
+        // JPEG: RGB(3ch)のみ。RGBA→RGB変換が必要な場合は上でchannels=3を選択済み
+        const uint8_t* jpeg_pixels = rgb.pixels;
+        uint8_t* rgb_converted = NULL;
+        int jpeg_channels = channels;
+        int jpeg_stride = (int)rgb.rowBytes;
+
+        if (channels == 4) {
+            size_t rgb_size = (size_t)rgb.width * (size_t)rgb.height * 3;
+            rgb_converted = (uint8_t*)nextimage_malloc(rgb_size);
+            if (!rgb_converted) {
+                avifRGBImageFreePixels(&rgb);
+                avifDecoderDestroy(decoder);
+                nextimage_set_error("Failed to allocate RGB conversion buffer for JPEG");
+                return NEXTIMAGE_ERROR_OUT_OF_MEMORY;
+            }
+            for (uint32_t y = 0; y < rgb.height; y++) {
+                for (uint32_t x = 0; x < rgb.width; x++) {
+                    size_t src_idx = y * rgb.rowBytes + x * 4;
+                    size_t dst_idx = (y * rgb.width + x) * 3;
+                    rgb_converted[dst_idx + 0] = rgb.pixels[src_idx + 0];
+                    rgb_converted[dst_idx + 1] = rgb.pixels[src_idx + 1];
+                    rgb_converted[dst_idx + 2] = rgb.pixels[src_idx + 2];
+                }
+            }
+            jpeg_pixels = rgb_converted;
+            jpeg_channels = 3;
+            jpeg_stride = (int)(rgb.width * 3);
+        }
+
+        NextImageJPEGMetadata jpeg_meta;
+        avifdec_build_jpeg_metadata(image, &jpeg_meta);
+
+        encode_result = nextimage_write_jpeg_to_buffer_ex(
+            output, jpeg_pixels,
+            (int)rgb.width, (int)rgb.height,
+            jpeg_channels, jpeg_stride,
+            cmd->jpeg_quality, &jpeg_meta
+        );
+
+        if (rgb_converted) nextimage_free(rgb_converted);
+    } else {
+        // PNG: メタデータ付き書き出し（avifPNGWrite互換）
+        NextImagePNGMetadata png_meta;
+        avifdec_build_png_metadata(image, &png_meta);
+        png_meta.bit_depth = rgbDepth;
+
+        encode_result = nextimage_write_png_to_buffer_ex(
+            output, rgb.pixels,
+            (int)rgb.width, (int)rgb.height,
+            channels, (int)rgb.rowBytes,
+            &png_meta
         );
     }
 
-    // BGRA変換用の一時バッファを解放
-    if (converted_data) {
-        nextimage_free(converted_data);
-    }
+    avifRGBImageFreePixels(&rgb);
+    avifDecoderDestroy(decoder);
 
-    // デコードバッファを解放
-    nextimage_free_decode_buffer(&decode_buf);
-
-    if (!result) {
+    if (encode_result != 0) {
         nextimage_free_buffer(output);
         nextimage_set_error("Failed to encode output (format: %s)",
                            cmd->output_format == AVIFDEC_OUTPUT_JPEG ? "JPEG" : "PNG");
