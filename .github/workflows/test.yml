@@ -8,10 +8,9 @@ on:
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
-  # Develop branch: Build C library from source
+  # Build C library from source (all branches)
   build-c-library:
     name: Build C Library (${{ matrix.os }})
-    if: github.ref != 'refs/heads/main' && github.base_ref != 'main'
     strategy:
       matrix:
         include:
@@ -170,7 +169,6 @@ jobs:
   test-go:
     name: Go Tests (${{ matrix.os }})
     needs: build-c-library
-    if: always() && (needs.build-c-library.result == 'success' || needs.build-c-library.result == 'skipped')
     strategy:
       matrix:
         include:
@@ -267,7 +265,6 @@ jobs:
   test-typescript:
     name: TypeScript Tests (${{ matrix.os }})
     needs: build-c-library
-    if: always() && (needs.build-c-library.result == 'success' || needs.build-c-library.result == 'skipped')
     strategy:
       matrix:
         include:
