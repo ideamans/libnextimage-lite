@@ -132,6 +132,17 @@ jobs:
         run: |
           bash scripts/generate-test-images.sh
 
+      - name: Copy libraries to Go/TypeScript modules (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          make copy-libs-local
+
+      - name: Copy libraries to Go/TypeScript modules (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          make copy-libs-local
+
       - name: Cache C library artifacts
         uses: actions/cache/save@v3
         with:
@@ -139,6 +150,8 @@ jobs:
             lib/
             c/build/
             testdata/
+            golang/shared/
+            typescript/lib/
           key: c-library-${{ matrix.os }}-${{ matrix.arch }}-${{ github.sha }}
 
       - name: Dump build logs (on failure - Unix)
@@ -192,6 +205,7 @@ jobs:
     name: Go Tests (${{ matrix.os }})
     needs: build-c-library
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -220,6 +234,8 @@ jobs:
             lib/
             c/build/
             testdata/
+            golang/shared/
+            typescript/lib/
           key: c-library-${{ matrix.os }}-${{ matrix.arch }}-${{ github.sha }}
           fail-on-cache-miss: true
 
@@ -288,6 +304,7 @@ jobs:
     name: TypeScript Tests (${{ matrix.os }})
     needs: build-c-library
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -320,6 +337,8 @@ jobs:
             lib/
             c/build/
             testdata/
+            golang/shared/
+            typescript/lib/
           key: c-library-${{ matrix.os }}-${{ matrix.arch }}-${{ github.sha }}
           fail-on-cache-miss: true
 
