@@ -224,6 +224,8 @@ scratch/
 
 # Build artifacts for CLI tools
 bin/
+build/
+build-*/
 build-cli-tools/
 build-test-compat/
 
