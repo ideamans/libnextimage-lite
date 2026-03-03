@@ -1,5 +1,5 @@
 /**
- * Light API v2 tests
+ * Lite API v2 tests
  */
 
 import { describe, it } from 'node:test'

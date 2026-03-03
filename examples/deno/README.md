@@ -13,8 +13,8 @@ Currently implemented:
 
 Not yet implemented:
 - ⏳ WebPDecoder
-- ⏳ AVIFEncoder
-- ⏳ AVIFDecoder
+- ⏳ AVIFEncoder [Experimental]
+- ⏳ AVIFDecoder [Experimental]
 - ⏳ Full options support
 
 ## Prerequisites
@@ -58,7 +58,7 @@ examples/deno/
 
 ```typescript
 // Using import map in deno.json
-import { WebPEncoder } from '@ideamans/libnextimage'
+import { WebPEncoder } from '@ideamans/libnextimage-lite'
 ```
 
 ### From deno.land/x (Not yet published)
@@ -73,13 +73,13 @@ import { WebPEncoder } from 'https://deno.land/x/libnextimage@v0.4.0/deno/mod.ts
 ```typescript
 // Note: Deno FFI may not work correctly with npm: specifier
 // Use the direct import instead
-import { WebPEncoder } from 'npm:@ideamans/libnextimage/deno'
+import { WebPEncoder } from 'npm:@ideamans/libnextimage-lite/deno'
 ```
 
 ## Example Usage
 
 ```typescript
-import { WebPEncoder } from '@ideamans/libnextimage'
+import { WebPEncoder } from '@ideamans/libnextimage-lite'
 
 // Read JPEG file
 const jpegData = await Deno.readFile('input.jpg')
@@ -162,5 +162,5 @@ Help wanted! If you're experienced with Deno FFI, contributions are welcome:
 ## Links
 
 - [Deno FFI Documentation](https://deno.land/manual/runtime/ffi_api)
-- [Main Repository](https://github.com/ideamans/libnextimage)
+- [Main Repository](https://github.com/ideamans/libnextimage-lite)
 - [Node.js Version](../nodejs/)

@@ -13,8 +13,8 @@ Currently implemented:
 
 Not yet implemented:
 - ⏳ WebPDecoder
-- ⏳ AVIFEncoder
-- ⏳ AVIFDecoder
+- ⏳ AVIFEncoder [Experimental]
+- ⏳ AVIFDecoder [Experimental]
 - ⏳ Full options support
 
 ## Prerequisites
@@ -51,7 +51,7 @@ examples/bun/
 ## Example Usage
 
 ```typescript
-import { WebPEncoder } from '@ideamans/libnextimage/bun'
+import { WebPEncoder } from '@ideamans/libnextimage-lite/bun'
 import { readFileSync, writeFileSync } from 'fs'
 
 // Read JPEG file
@@ -77,14 +77,14 @@ console.log(`Converted: ${jpegData.length} → ${webpData.length} bytes`)
 1. **FFI API**: Uses `bun:ffi` instead of Koffi
 2. **Performance**: Bun's FFI may offer better performance
 3. **File I/O**: Uses standard Node.js API (fs module)
-4. **Import**: Uses `@ideamans/libnextimage/bun` subpath
+4. **Import**: Uses `@ideamans/libnextimage-lite/bun` subpath
 
 ## Benchmarking
 
 Bun is optimized for performance. You can benchmark encoding speed:
 
 ```typescript
-import { WebPEncoder } from '@ideamans/libnextimage/bun'
+import { WebPEncoder } from '@ideamans/libnextimage-lite/bun'
 import { readFileSync } from 'fs'
 
 const jpegData = readFileSync('input.jpg')
@@ -178,6 +178,6 @@ Help wanted! If you're experienced with Bun FFI, contributions are welcome:
 ## Links
 
 - [Bun FFI Documentation](https://bun.sh/docs/api/ffi)
-- [Main Repository](https://github.com/ideamans/libnextimage)
+- [Main Repository](https://github.com/ideamans/libnextimage-lite)
 - [Node.js Version](../nodejs/)
 - [Deno Version](../deno/)

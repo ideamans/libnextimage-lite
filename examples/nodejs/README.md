@@ -1,6 +1,6 @@
 # Node.js E2E Tests for libnextimage
 
-End-to-end tests that verify the published (or local) `@ideamans/libnextimage` package works correctly in a real Node.js environment.
+End-to-end tests that verify the published (or local) `@ideamans/libnextimage-lite` package works correctly in a real Node.js environment.
 
 ## Prerequisites
 
@@ -14,7 +14,7 @@ cd examples/nodejs
 npm install
 ```
 
-This will install the `@ideamans/libnextimage` package. During development, it uses the local version via `file:../../typescript`.
+This will install the `@ideamans/libnextimage-lite` package. During development, it uses the local version via `file:../../typescript`.
 
 ## Running Tests
 
@@ -214,7 +214,7 @@ cd examples/nodejs
 npm test
 ```
 
-### "Cannot find module '@ideamans/libnextimage'"
+### "Cannot find module '@ideamans/libnextimage-lite'"
 
 Install dependencies first:
 
@@ -239,7 +239,7 @@ To test with the published npm package instead of the local version:
    ```json
    {
      "dependencies": {
-       "@ideamans/libnextimage": "^0.4.0"
+       "@ideamans/libnextimage-lite": "^0.4.0"
      }
    }
    ```

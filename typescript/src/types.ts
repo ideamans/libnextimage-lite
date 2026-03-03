@@ -1,5 +1,5 @@
 /**
- * Type Definitions for libnextimage Light API
+ * Type Definitions for libnextimage Lite API
  */
 
 /**

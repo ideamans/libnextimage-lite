@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	libnextimage "github.com/ideamans/libnextimage/golang"
+	libnextimage "github.com/ideamans/libnextimage-lite/golang"
 )
 
 func main() {

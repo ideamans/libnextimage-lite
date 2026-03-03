@@ -16,8 +16,10 @@ npm install libnextimage
 |------|------|------|------|
 | `legacyToWebp` | JPEG/PNG/GIF | WebP | JPEG→lossy(q=75), PNG→lossless, GIF→gif2webp |
 | `webpToLegacy` | WebP | JPEG/PNG/GIF | animated→GIF, lossless→PNG, lossy→JPEG(q=90) |
-| `legacyToAvif` | JPEG/PNG | AVIF | JPEG→lossy(q=60), PNG→lossless |
-| `avifToLegacy` | AVIF | JPEG/PNG | lossless→PNG, lossy→JPEG(q=90) |
+| `legacyToAvif` | JPEG/PNG | AVIF | JPEG→lossy(q=60), PNG→lossless **[Experimental]** |
+| `avifToLegacy` | AVIF | JPEG/PNG | lossless→PNG, lossy→JPEG(q=90) **[Experimental]** |
+
+> **注意:** AVIF関連機能（`legacyToAvif`、`avifToLegacy`）は現在 **Experimental（実験的）** です。APIが変更される可能性があります。本番環境ではWebP変換の使用を推奨します。
 
 ## クイックスタート
 
@@ -63,8 +65,8 @@ interface ConvertOutput {
 ```typescript
 function legacyToWebp(input: ConvertInput): ConvertOutput  // JPEG/PNG/GIF → WebP
 function webpToLegacy(input: ConvertInput): ConvertOutput   // WebP → JPEG/PNG/GIF (自動)
-function legacyToAvif(input: ConvertInput): ConvertOutput   // JPEG/PNG → AVIF
-function avifToLegacy(input: ConvertInput): ConvertOutput   // AVIF → JPEG/PNG (自動)
+function legacyToAvif(input: ConvertInput): ConvertOutput   // JPEG/PNG → AVIF [Experimental]
+function avifToLegacy(input: ConvertInput): ConvertOutput   // AVIF → JPEG/PNG (自動) [Experimental]
 ```
 
 すべての関数は失敗時に `NextImageError` をスローします。

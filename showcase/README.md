@@ -77,11 +77,11 @@ npm run dev
 
 | 入力形式 | 変換先 | 使用関数 |
 |---------|--------|---------|
-| JPEG | WebP, AVIF | `legacyToWebp`, `legacyToAvif` |
-| PNG | WebP, AVIF | `legacyToWebp`, `legacyToAvif` |
+| JPEG | WebP, AVIF | `legacyToWebp`, `legacyToAvif` [Experimental] |
+| PNG | WebP, AVIF | `legacyToWebp`, `legacyToAvif` [Experimental] |
 | GIF | WebP | `legacyToWebp` |
 | WebP | JPEG or PNG | `webpToLegacy` |
-| AVIF | JPEG or PNG | `avifToLegacy` |
+| AVIF | JPEG or PNG | `avifToLegacy` [Experimental] |
 
 ## フィルタ機能
 

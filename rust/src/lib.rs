@@ -219,7 +219,7 @@ fn download_library(cache_dir: &PathBuf) -> Result<()> {
 
     let platform = get_platform();
     let url = format!(
-        "https://github.com/ideamans/libnextimage/releases/download/v{}/libnextimage-{}.tar.gz",
+        "https://github.com/ideamans/libnextimage-lite/releases/download/v{}/libnextimage-{}.tar.gz",
         VERSION, platform
     );
 

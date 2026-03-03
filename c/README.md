@@ -5,7 +5,7 @@ High-performance WebP, AVIF, and GIF image processing library in C.
 ## Features
 
 - **WebP Encoding & Decoding**: Fast WebP image processing with full control over quality and encoding options
-- **AVIF Encoding & Decoding**: Modern AVIF format support with quality and speed presets
+- **AVIF Encoding & Decoding** **[Experimental]**: Modern AVIF format support with quality and speed presets
 - **GIF Conversion**: Convert between GIF and WebP formats, including animated GIFs
 - **Zero Dependencies** (for linking): Single shared library with all dependencies bundled
 - **Cross-Platform**: Supports macOS (ARM64/x64), Linux (x64/ARM64), and Windows (x64)
@@ -192,7 +192,7 @@ int main() {
 }
 ```
 
-### AVIF Encoding
+### AVIF Encoding [Experimental]
 
 ```c
 #include <nextimage/avif_encoder.h>
@@ -232,7 +232,7 @@ int main() {
 }
 ```
 
-### AVIF Decoding
+### AVIF Decoding [Experimental]
 
 ```c
 #include <nextimage/avif_decoder.h>
@@ -481,7 +481,7 @@ NextImageStatus webp_decoder_run_command(
 void webp_decoder_free_command(WebPDecoderCommand* cmd);
 ```
 
-### AVIF Encoder
+### AVIF Encoder [Experimental]
 
 ```c
 // Header: nextimage/avif_encoder.h
@@ -522,7 +522,7 @@ NextImageStatus avif_encoder_run_command(
 void avif_encoder_free_command(AVIFEncoderCommand* cmd);
 ```
 
-### AVIF Decoder
+### AVIF Decoder [Experimental]
 
 ```c
 // Header: nextimage/avif_decoder.h
@@ -782,8 +782,8 @@ MIT License (c) 2025 Ideamans Inc.
 
 ## Links
 
-- GitHub: https://github.com/ideamans/libnextimage
-- Issues: https://github.com/ideamans/libnextimage/issues
+- GitHub: https://github.com/ideamans/libnextimage-lite
+- Issues: https://github.com/ideamans/libnextimage-lite/issues
 
 ## Contributing
 

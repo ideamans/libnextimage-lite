@@ -1,7 +1,7 @@
 /**
  * Exif Orientation Memory Leak Test
  *
- * Verifies that orientation extraction, auto-orient, and Light API
+ * Verifies that orientation extraction, auto-orient, and Lite API
  * conversion of oriented JPEGs have no memory leaks.
  *
  * Uses the NEXTIMAGE_DEBUG allocation counter to track allocations.
@@ -164,10 +164,10 @@ void test_auto_orient_no_exif_no_leak(void) {
 }
 
 // ========================================
-// Test: Light API legacy_to_webp with oriented JPEGs
+// Test: Lite API legacy_to_webp with oriented JPEGs
 // ========================================
 void test_light_webp_oriented_no_leak(void) {
-    printf("Testing Light API legacy_to_webp with oriented JPEGs memory...\n");
+    printf("Testing Lite API legacy_to_webp with oriented JPEGs memory...\n");
 
     const char* files[] = {
         "../../testdata/orientation/orientation-1.jpg",
@@ -210,10 +210,10 @@ void test_light_webp_oriented_no_leak(void) {
 }
 
 // ========================================
-// Test: Light API legacy_to_avif with oriented JPEGs
+// Test: Lite API legacy_to_avif with oriented JPEGs
 // ========================================
 void test_light_avif_oriented_no_leak(void) {
-    printf("Testing Light API legacy_to_avif with oriented JPEGs memory...\n");
+    printf("Testing Lite API legacy_to_avif with oriented JPEGs memory...\n");
 
     const char* files[] = {
         "../../testdata/orientation/orientation-1.jpg",
@@ -256,10 +256,10 @@ void test_light_avif_oriented_no_leak(void) {
 }
 
 // ========================================
-// Test: Light API webp_to_legacy (roundtrip: oriented JPEG -> WebP -> JPEG)
+// Test: Lite API webp_to_legacy (roundtrip: oriented JPEG -> WebP -> JPEG)
 // ========================================
 void test_light_webp_to_legacy_no_leak(void) {
-    printf("Testing Light API webp_to_legacy (oriented JPEG -> WebP -> JPEG) memory...\n");
+    printf("Testing Lite API webp_to_legacy (oriented JPEG -> WebP -> JPEG) memory...\n");
 
     const char* files[] = {
         "../../testdata/orientation/orientation-1.jpg",
@@ -316,10 +316,10 @@ void test_light_webp_to_legacy_no_leak(void) {
 }
 
 // ========================================
-// Test: Light API avif_to_legacy (roundtrip: oriented JPEG -> AVIF -> JPEG)
+// Test: Lite API avif_to_legacy (roundtrip: oriented JPEG -> AVIF -> JPEG)
 // ========================================
 void test_light_avif_to_legacy_no_leak(void) {
-    printf("Testing Light API avif_to_legacy (oriented JPEG -> AVIF -> JPEG) memory...\n");
+    printf("Testing Lite API avif_to_legacy (oriented JPEG -> AVIF -> JPEG) memory...\n");
 
     const char* files[] = {
         "../../testdata/orientation/orientation-1.jpg",
@@ -379,7 +379,7 @@ void test_light_avif_to_legacy_no_leak(void) {
 // Test: webp_to_legacy with lossless WebP -> PNG path
 // ========================================
 void test_light_webp_to_legacy_lossless_no_leak(void) {
-    printf("Testing Light API webp_to_legacy (PNG -> lossless WebP -> PNG) memory...\n");
+    printf("Testing Lite API webp_to_legacy (PNG -> lossless WebP -> PNG) memory...\n");
 
     size_t size;
     uint8_t* data = read_file("../../testdata/png-source/small-128x128.png", &size);
@@ -429,7 +429,7 @@ void test_light_webp_to_legacy_lossless_no_leak(void) {
 // Test: avif_to_legacy with lossless AVIF -> PNG path
 // ========================================
 void test_light_avif_to_legacy_lossless_no_leak(void) {
-    printf("Testing Light API avif_to_legacy (PNG -> lossless AVIF -> PNG) memory...\n");
+    printf("Testing Lite API avif_to_legacy (PNG -> lossless AVIF -> PNG) memory...\n");
 
     size_t size;
     uint8_t* data = read_file("../../testdata/png-source/small-128x128.png", &size);
@@ -487,7 +487,7 @@ int main(void) {
     test_auto_orient_rotation_no_leak();
     test_auto_orient_no_exif_no_leak();
 
-    // Light API integration leak tests
+    // Lite API integration leak tests
     test_light_webp_oriented_no_leak();
     test_light_avif_oriented_no_leak();
 

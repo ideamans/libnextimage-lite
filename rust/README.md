@@ -186,7 +186,7 @@ export LIBNEXTIMAGE_LIB_DIR=/path/to/lib/darwin-arm64
 
 ### 3. Manual Installation
 
-Download from [GitHub Releases](https://github.com/ideamans/libnextimage/releases) and place in the cache directory:
+Download from [GitHub Releases](https://github.com/ideamans/libnextimage-lite/releases) and place in the cache directory:
 
 - Linux/macOS: `~/.cache/libnextimage/lib/<platform>/libnextimage.a`
 - Windows: `%LOCALAPPDATA%/libnextimage/lib/<platform>/libnextimage.a`
@@ -215,6 +215,6 @@ BSD-3-Clause
 
 ## Related Projects
 
-- [libnextimage](https://github.com/ideamans/libnextimage) - Core C library
+- [libnextimage](https://github.com/ideamans/libnextimage-lite) - Core C library
 - [libwebp](https://chromium.googlesource.com/webm/libwebp) - WebP codec
 - [libavif](https://github.com/AOMediaCodec/libavif) - AVIF codec

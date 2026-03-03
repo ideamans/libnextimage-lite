@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	libnextimage "github.com/ideamans/libnextimage/golang"
+	libnextimage "github.com/ideamans/libnextimage-lite/golang"
 )
 
 func main() {

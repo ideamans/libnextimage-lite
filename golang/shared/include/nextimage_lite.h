@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 // ========================================
-// libnextimage Light API v2
+// libnextimage Lite API v2
 // ========================================
 // 4 unified conversion functions with automatic format detection.
 // Input format is detected from magic bytes; output format is determined

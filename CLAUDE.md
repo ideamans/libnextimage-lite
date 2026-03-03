@@ -106,8 +106,10 @@ Used for library paths: `darwin-arm64`, `darwin-amd64`, `linux-amd64`, `linux-ar
 |----------|-------|--------|----------|
 | `legacyToWebp` | JPEG/PNG/GIF | WebP | JPEG→lossy(q=75), PNG→lossless, GIF→gif2webp default |
 | `webpToLegacy` | WebP | JPEG/PNG/GIF | animated→GIF, lossless→PNG, lossy→JPEG(q=90) |
-| `legacyToAvif` | JPEG/PNG | AVIF | JPEG→lossy(q=60), PNG→lossless high-precision |
-| `avifToLegacy` | AVIF | JPEG/PNG | lossless→PNG, lossy→JPEG(q=90) |
+| `legacyToAvif` | JPEG/PNG | AVIF | JPEG→lossy(q=60), PNG→lossless high-precision **[Experimental]** |
+| `avifToLegacy` | AVIF | JPEG/PNG | lossless→PNG, lossy→JPEG(q=90) **[Experimental]** |
+
+> **Note:** AVIF support is **Experimental**. The API may change.
 
 ### C Layer
 
@@ -167,15 +169,15 @@ The light API delegates to these internal command implementations (tested indepe
 | dwebp | `c/src/webp.c` | Decode WebP to JPEG/PNG |
 | gif2webp | `c/src/webp.c` | Convert GIF to WebP |
 | webp2gif | `c/src/webp.c` | Convert static WebP to GIF |
-| avifenc | `c/src/avif.c` | Encode images to AVIF |
-| avifdec | `c/src/avif.c` | Decode AVIF to JPEG/PNG |
+| avifenc | `c/src/avif.c` | Encode images to AVIF [Experimental] |
+| avifdec | `c/src/avif.c` | Decode AVIF to JPEG/PNG [Experimental] |
 
 ## Key Files
 
 | Path | Purpose |
 |------|---------|
-| `c/include/nextimage_lite.h` | Light API C header (4 functions) |
-| `c/src/light.c` | Light API C implementation (format detection + dispatch) |
+| `c/include/nextimage_lite.h` | Lite API C header (4 functions) |
+| `c/src/light.c` | Lite API C implementation (format detection + dispatch) |
 | `c/src/webp.c` | Internal cwebp/dwebp/gif2webp/webp2gif implementations |
 | `c/src/avif.c` | Internal avifenc/avifdec implementations |
 | `c/include/nextimage/cwebp.h` | cwebp command interface |

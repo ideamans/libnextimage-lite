@@ -502,10 +502,10 @@ static void get_webp_dimensions(const uint8_t* data, size_t size, int* width, in
 }
 
 // ========================================
-// Test: Light API - Oriented JPEG -> WebP
+// Test: Lite API - Oriented JPEG -> WebP
 // ========================================
 void test_light_oriented_jpeg_to_webp(void) {
-    printf("\nTesting Light API: oriented JPEG -> WebP...\n");
+    printf("\nTesting Lite API: oriented JPEG -> WebP...\n");
 
     struct {
         const char* filename;
@@ -551,14 +551,14 @@ void test_light_oriented_jpeg_to_webp(void) {
         free(data);
     }
 
-    printf("  ✓ Light API oriented JPEG -> WebP test passed\n");
+    printf("  ✓ Lite API oriented JPEG -> WebP test passed\n");
 }
 
 // ========================================
-// Test: Light API - Oriented JPEG -> AVIF
+// Test: Lite API - Oriented JPEG -> AVIF
 // ========================================
 void test_light_oriented_jpeg_to_avif(void) {
-    printf("\nTesting Light API: oriented JPEG -> AVIF...\n");
+    printf("\nTesting Lite API: oriented JPEG -> AVIF...\n");
 
     struct {
         const char* filename;
@@ -631,7 +631,7 @@ void test_light_oriented_jpeg_to_avif(void) {
         free(data);
     }
 
-    printf("  ✓ Light API oriented JPEG -> AVIF test passed\n");
+    printf("  ✓ Lite API oriented JPEG -> AVIF test passed\n");
 }
 
 int main(void) {
@@ -650,7 +650,7 @@ int main(void) {
     // Output quality tests
     test_output_subsampling();
 
-    // Light API integration tests
+    // Lite API integration tests
     test_light_oriented_jpeg_to_webp();
     test_light_oriented_jpeg_to_avif();
 

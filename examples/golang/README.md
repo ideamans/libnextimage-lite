@@ -29,10 +29,10 @@ go mod tidy
 
 # Step 2: Install pre-built libraries to your Go module cache
 # This is a ONE-TIME setup per version
-bash <(curl -fsSL https://raw.githubusercontent.com/ideamans/libnextimage/main/scripts/setup-go-module.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/ideamans/libnextimage-lite/main/scripts/setup-go-module.sh)
 
 # On Windows (MSYS2/Git Bash):
-curl -fsSL https://raw.githubusercontent.com/ideamans/libnextimage/main/scripts/setup-go-module.sh | bash
+curl -fsSL https://raw.githubusercontent.com/ideamans/libnextimage-lite/main/scripts/setup-go-module.sh | bash
 
 # The script will:
 # - Auto-detect your platform (darwin-arm64, linux-amd64, windows-amd64, etc.)
@@ -47,7 +47,7 @@ Convert JPEG images to WebP format with customizable quality settings.
 
 ```bash
 # Download a sample image (or use your own)
-curl -o sample.jpg https://raw.githubusercontent.com/ideamans/libnextimage/main/testdata/jpeg-source/gradient-horizontal.jpg
+curl -o sample.jpg https://raw.githubusercontent.com/ideamans/libnextimage-lite/main/testdata/jpeg-source/gradient-horizontal.jpg
 
 # Run the example
 go run jpeg_to_webp.go sample.jpg output.webp
@@ -59,9 +59,11 @@ go run jpeg_to_webp.go input.jpg output.webp 85
 go run jpeg_to_webp.go input.jpg output.webp lossless
 ```
 
-#### 2. JPEG to AVIF Conversion
+#### 2. JPEG to AVIF Conversion [Experimental]
 
 Convert JPEG images to AVIF format (next-generation image format).
+
+> **Note:** AVIF support is currently **experimental**. The API may change.
 
 ```bash
 go run jpeg_to_avif.go input.jpg output.avif
@@ -89,7 +91,7 @@ Basic example showing how to:
 
 **Use case**: Simple image format conversion for web optimization
 
-### jpeg_to_avif.go
+### jpeg_to_avif.go [Experimental]
 Demonstrates AVIF encoding with:
 - Quality and speed settings
 - File size comparison
@@ -108,7 +110,7 @@ Production-ready example featuring:
 
 ## What Happens During Installation
 
-When you run `go get github.com/ideamans/libnextimage/golang`:
+When you run `go get github.com/ideamans/libnextimage-lite/golang`:
 
 1. Go downloads the source code
 2. The package's `init()` function runs
@@ -127,7 +129,7 @@ This error means the native libraries haven't been installed to your Go module c
 
 **Solution**: Run the setup script:
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/ideamans/libnextimage/main/scripts/setup-go-module.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/ideamans/libnextimage-lite/main/scripts/setup-go-module.sh)
 ```
 
 On Windows, you may need to run this in an elevated terminal (as Administrator).
@@ -138,7 +140,7 @@ If the setup script reports permission errors, you need to run it with elevated 
 
 **Unix/macOS**:
 ```bash
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/ideamans/libnextimage/main/scripts/setup-go-module.sh)
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/ideamans/libnextimage-lite/main/scripts/setup-go-module.sh)
 ```
 
 **Windows** (Git Bash/MSYS2):
@@ -153,8 +155,8 @@ If you see this error:
 2. **Check your internet connection** - Download requires GitHub access
 3. **Use a previous version**:
    ```bash
-   go get github.com/ideamans/libnextimage/golang@v0.2.0
-   bash <(curl -fsSL https://raw.githubusercontent.com/ideamans/libnextimage/main/scripts/setup-go-module.sh) v0.2.0
+   go get github.com/ideamans/libnextimage-lite/golang@v0.2.0
+   bash <(curl -fsSL https://raw.githubusercontent.com/ideamans/libnextimage-lite/main/scripts/setup-go-module.sh) v0.2.0
    ```
 4. **Build from source**:
    ```bash
@@ -167,7 +169,7 @@ If you see this error:
 - [Main Documentation](../../README.md)
 - [API Reference](../../golang/)
 - [C API](../../c/)
-- [Release Notes](https://github.com/ideamans/libnextimage/releases)
+- [Release Notes](https://github.com/ideamans/libnextimage-lite/releases)
 
 ## Contributing Examples
 

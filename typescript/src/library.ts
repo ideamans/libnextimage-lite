@@ -81,7 +81,7 @@ export function getLibraryFileName(): string {
  *
  * Note: __dirname in compiled code (dist/) points to:
  * - Development: <project-root>/typescript/dist/
- * - Installed: node_modules/@ideamans/libnextimage/dist/
+ * - Installed: node_modules/@ideamans/libnextimage-lite/dist/
  */
 export function findLibraryPath(): string {
   const platform = getPlatform();

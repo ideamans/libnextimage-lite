@@ -5,7 +5,7 @@ Simplified image conversion library for Go. Provides 4 unified conversion functi
 ## Installation
 
 ```bash
-go get github.com/ideamans/libnextimage/golang
+go get github.com/ideamans/libnextimage-lite/golang
 ```
 
 ## Conversion Functions
@@ -14,8 +14,10 @@ go get github.com/ideamans/libnextimage/golang
 |----------|-------|--------|----------|
 | `LegacyToWebP` | JPEG/PNG/GIF | WebP | JPEG→lossy(q=75), PNG→lossless, GIF→gif2webp |
 | `WebPToLegacy` | WebP | JPEG/PNG/GIF | animated→GIF, lossless→PNG, lossy→JPEG(q=90) |
-| `LegacyToAvif` | JPEG/PNG | AVIF | JPEG→lossy(q=60), PNG→lossless |
-| `AvifToLegacy` | AVIF | JPEG/PNG | lossless→PNG, lossy→JPEG(q=90) |
+| `LegacyToAvif` | JPEG/PNG | AVIF | JPEG→lossy(q=60), PNG→lossless **[Experimental]** |
+| `AvifToLegacy` | AVIF | JPEG/PNG | lossless→PNG, lossy→JPEG(q=90) **[Experimental]** |
+
+> **Note:** AVIF support (`LegacyToAvif`, `AvifToLegacy`) is currently **experimental**. The API may change. WebP conversion is stable and recommended for production use.
 
 ## Quick Start
 
@@ -24,7 +26,7 @@ package main
 
 import (
     "os"
-    libnextimage "github.com/ideamans/libnextimage/golang"
+    libnextimage "github.com/ideamans/libnextimage-lite/golang"
 )
 
 func main() {
@@ -84,8 +86,8 @@ type ConvertOutput struct {
 ```go
 func LegacyToWebP(input ConvertInput) ConvertOutput  // JPEG/PNG/GIF → WebP
 func WebPToLegacy(input ConvertInput) ConvertOutput   // WebP → JPEG/PNG/GIF (auto)
-func LegacyToAvif(input ConvertInput) ConvertOutput   // JPEG/PNG → AVIF
-func AvifToLegacy(input ConvertInput) ConvertOutput   // AVIF → JPEG/PNG (auto)
+func LegacyToAvif(input ConvertInput) ConvertOutput   // JPEG/PNG → AVIF [Experimental]
+func AvifToLegacy(input ConvertInput) ConvertOutput   // AVIF → JPEG/PNG (auto) [Experimental]
 
 func Version() string  // Returns library version
 ```

@@ -54,7 +54,7 @@ echo "Checking if GitHub Release $VERSION has binaries..."
 if ! command -v gh &> /dev/null; then
   echo "⚠️  Warning: 'gh' CLI not found. Cannot verify binaries."
   echo "Please manually verify that all platform binaries are available:"
-  echo "  https://github.com/ideamans/libnextimage/releases/tag/$VERSION"
+  echo "  https://github.com/ideamans/libnextimage-lite/releases/tag/$VERSION"
   echo ""
   read -p "Have you verified all binaries are available? (y/N): " -n 1 -r
   echo
@@ -122,7 +122,7 @@ echo "✅ Success!"
 echo ""
 echo "Go module $GOLANG_TAG has been released!"
 echo "Users can now install it with:"
-echo "  go get github.com/ideamans/libnextimage/golang@$VERSION"
+echo "  go get github.com/ideamans/libnextimage-lite/golang@$VERSION"
 echo ""
 echo "Verify the release:"
-echo "  https://github.com/ideamans/libnextimage/releases/tag/$GOLANG_TAG"
+echo "  https://github.com/ideamans/libnextimage-lite/releases/tag/$GOLANG_TAG"

@@ -4,7 +4,7 @@
 # This script downloads and installs the pre-built library to the Go module cache
 #
 # Usage:
-#   bash <(curl -fsSL https://raw.githubusercontent.com/ideamans/libnextimage/main/scripts/setup-go-module.sh)
+#   bash <(curl -fsSL https://raw.githubusercontent.com/ideamans/libnextimage-lite/main/scripts/setup-go-module.sh)
 #
 # Or locally:
 #   bash scripts/setup-go-module.sh
@@ -72,10 +72,10 @@ echo "Go module cache: $GOMODCACHE"
 echo ""
 
 # Determine module path (handle both v0.3.0 and golang/v0.3.0 tags)
-MODULE_PATH="$GOMODCACHE/github.com/ideamans/libnextimage@$VERSION"
+MODULE_PATH="$GOMODCACHE/github.com/ideamans/libnextimage-lite@$VERSION"
 if [ ! -d "$MODULE_PATH" ]; then
   echo "Module not found in cache. Downloading..."
-  go get github.com/ideamans/libnextimage/golang@$VERSION
+  go get github.com/ideamans/libnextimage-lite/golang@$VERSION
   # Update module path after download
   MODULE_PATH=$(find "$GOMODCACHE/github.com/ideamans" -name "libnextimage@$VERSION" -o -name "libnextimage*" | head -1)
 fi
@@ -111,7 +111,7 @@ fi
 
 # Download release archive
 ARCHIVE_NAME="libnextimage-${VERSION}-${PLATFORM_ARCH}.tar.gz"
-DOWNLOAD_URL="https://github.com/ideamans/libnextimage/releases/download/${VERSION}/${ARCHIVE_NAME}"
+DOWNLOAD_URL="https://github.com/ideamans/libnextimage-lite/releases/download/${VERSION}/${ARCHIVE_NAME}"
 
 echo "Downloading: $ARCHIVE_NAME"
 echo "From: $DOWNLOAD_URL"
@@ -170,5 +170,5 @@ echo ""
 echo "Library installed to: $LIB_PATH"
 echo ""
 echo "You can now use libnextimage in your Go project:"
-echo "  import \"github.com/ideamans/libnextimage/golang\""
+echo "  import \"github.com/ideamans/libnextimage-lite/golang\""
 echo ""

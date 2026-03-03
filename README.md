@@ -10,15 +10,17 @@ Provides 4 unified conversion functions with automatic format detection. Built o
 |----------|-------|--------|----------|
 | `legacyToWebp` | JPEG/PNG/GIF | WebP | JPEG→lossy(q=75), PNG→lossless, GIF→gif2webp |
 | `webpToLegacy` | WebP | JPEG/PNG/GIF | animated→GIF, lossless→PNG, lossy→JPEG(q=90) |
-| `legacyToAvif` | JPEG/PNG | AVIF | JPEG→lossy(q=60), PNG→lossless |
-| `avifToLegacy` | AVIF | JPEG/PNG | lossless→PNG, lossy→JPEG(q=90) |
+| `legacyToAvif` | JPEG/PNG | AVIF | JPEG→lossy(q=60), PNG→lossless **[Experimental]** |
+| `avifToLegacy` | AVIF | JPEG/PNG | lossless→PNG, lossy→JPEG(q=90) **[Experimental]** |
+
+> **Note:** AVIF support (`legacyToAvif`, `avifToLegacy`) is currently **experimental**. The API may change and some edge cases may not be fully handled. WebP conversion is stable and recommended for production use.
 
 ## Quick Start
 
 ### Go
 
 ```bash
-go get github.com/ideamans/libnextimage/golang
+go get github.com/ideamans/libnextimage-lite/golang
 ```
 
 ```go
@@ -26,7 +28,7 @@ package main
 
 import (
     "os"
-    libnextimage "github.com/ideamans/libnextimage/golang"
+    libnextimage "github.com/ideamans/libnextimage-lite/golang"
 )
 
 func main() {
@@ -99,7 +101,7 @@ All conversion functions follow a uniform struct-based pattern:
 - Linux: x64, ARM64
 - Windows: x64
 
-Pre-built binaries are available via [GitHub Releases](https://github.com/ideamans/libnextimage/releases).
+Pre-built binaries are available via [GitHub Releases](https://github.com/ideamans/libnextimage-lite/releases).
 
 ## Building from Source
 

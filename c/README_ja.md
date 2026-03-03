@@ -5,7 +5,7 @@ C言語による高性能WebP、AVIF、GIF画像処理ライブラリ。
 ## 機能
 
 - **WebPエンコード・デコード**: 品質とエンコードオプションを完全にコントロールできる高速WebP画像処理
-- **AVIFエンコード・デコード**: 品質と速度プリセットを備えた最新のAVIFフォーマットサポート
+- **AVIFエンコード・デコード** **[Experimental]**: 品質と速度プリセットを備えた最新のAVIFフォーマットサポート
 - **GIF変換**: アニメーションGIFを含むGIFとWebPフォーマット間の変換
 - **依存関係ゼロ**（リンク時）: すべての依存関係が組み込まれた単一の共有ライブラリ
 - **クロスプラットフォーム**: macOS (ARM64/x64)、Linux (x64/ARM64)、Windows (x64)をサポート
@@ -192,7 +192,7 @@ int main() {
 }
 ```
 
-### AVIFエンコード
+### AVIFエンコード [Experimental]
 
 ```c
 #include <nextimage/avif_encoder.h>
@@ -232,7 +232,7 @@ int main() {
 }
 ```
 
-### AVIFデコード
+### AVIFデコード [Experimental]
 
 ```c
 #include <nextimage/avif_decoder.h>
@@ -481,7 +481,7 @@ NextImageStatus webp_decoder_run_command(
 void webp_decoder_free_command(WebPDecoderCommand* cmd);
 ```
 
-### AVIFエンコーダー
+### AVIFエンコーダー [Experimental]
 
 ```c
 // ヘッダー: nextimage/avif_encoder.h
@@ -522,7 +522,7 @@ NextImageStatus avif_encoder_run_command(
 void avif_encoder_free_command(AVIFEncoderCommand* cmd);
 ```
 
-### AVIFデコーダー
+### AVIFデコーダー [Experimental]
 
 ```c
 // ヘッダー: nextimage/avif_decoder.h
@@ -782,8 +782,8 @@ BSD-3-Clause
 
 ## リンク
 
-- GitHub: https://github.com/ideamans/libnextimage
-- イシュー: https://github.com/ideamans/libnextimage/issues
+- GitHub: https://github.com/ideamans/libnextimage-lite
+- イシュー: https://github.com/ideamans/libnextimage-lite/issues
 
 ## コントリビューション
 

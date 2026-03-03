@@ -136,4 +136,4 @@ fi
 
 echo ""
 echo "You can now use the library with Go:"
-echo "  import \"github.com/ideamans/libnextimage/golang\""
+echo "  import \"github.com/ideamans/libnextimage-lite/golang\""

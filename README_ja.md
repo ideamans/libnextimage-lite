@@ -10,15 +10,17 @@ GoとTypeScript/Node.js向けの簡略化された画像変換ライブラリ。
 |------|------|------|------|
 | `legacyToWebp` | JPEG/PNG/GIF | WebP | JPEG→lossy(q=75), PNG→lossless, GIF→gif2webp |
 | `webpToLegacy` | WebP | JPEG/PNG/GIF | animated→GIF, lossless→PNG, lossy→JPEG(q=90) |
-| `legacyToAvif` | JPEG/PNG | AVIF | JPEG→lossy(q=60), PNG→lossless |
-| `avifToLegacy` | AVIF | JPEG/PNG | lossless→PNG, lossy→JPEG(q=90) |
+| `legacyToAvif` | JPEG/PNG | AVIF | JPEG→lossy(q=60), PNG→lossless **[Experimental]** |
+| `avifToLegacy` | AVIF | JPEG/PNG | lossless→PNG, lossy→JPEG(q=90) **[Experimental]** |
+
+> **注意:** AVIF関連機能（`legacyToAvif`、`avifToLegacy`）は現在 **Experimental（実験的）** です。APIが変更される可能性があり、一部のエッジケースが完全に対応されていない場合があります。本番環境ではWebP変換の使用を推奨します。
 
 ## クイックスタート
 
 ### Go
 
 ```bash
-go get github.com/ideamans/libnextimage/golang
+go get github.com/ideamans/libnextimage-lite/golang
 ```
 
 ```go
@@ -26,7 +28,7 @@ package main
 
 import (
     "os"
-    libnextimage "github.com/ideamans/libnextimage/golang"
+    libnextimage "github.com/ideamans/libnextimage-lite/golang"
 )
 
 func main() {
@@ -99,7 +101,7 @@ writeFileSync('output.avif', avif.data)
 - Linux: x64、ARM64
 - Windows: x64
 
-ビルド済みバイナリは[GitHub Releases](https://github.com/ideamans/libnextimage/releases)で提供されています。
+ビルド済みバイナリは[GitHub Releases](https://github.com/ideamans/libnextimage-lite/releases)で提供されています。
 
 ## ソースからのビルド
 

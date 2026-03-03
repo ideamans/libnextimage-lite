@@ -16,8 +16,10 @@ Pre-built native libraries are downloaded automatically during installation. No 
 |----------|-------|--------|----------|
 | `legacyToWebp` | JPEG/PNG/GIF | WebP | JPEG→lossy(q=75), PNG→lossless, GIF→gif2webp |
 | `webpToLegacy` | WebP | JPEG/PNG/GIF | animated→GIF, lossless→PNG, lossy→JPEG(q=90) |
-| `legacyToAvif` | JPEG/PNG | AVIF | JPEG→lossy(q=60), PNG→lossless |
-| `avifToLegacy` | AVIF | JPEG/PNG | lossless→PNG, lossy→JPEG(q=90) |
+| `legacyToAvif` | JPEG/PNG | AVIF | JPEG→lossy(q=60), PNG→lossless **[Experimental]** |
+| `avifToLegacy` | AVIF | JPEG/PNG | lossless→PNG, lossy→JPEG(q=90) **[Experimental]** |
+
+> **Note:** AVIF support (`legacyToAvif`, `avifToLegacy`) is currently **experimental**. The API may change. WebP conversion is stable and recommended for production use.
 
 ## Quick Start
 
@@ -63,8 +65,8 @@ interface ConvertOutput {
 ```typescript
 function legacyToWebp(input: ConvertInput): ConvertOutput  // JPEG/PNG/GIF → WebP
 function webpToLegacy(input: ConvertInput): ConvertOutput   // WebP → JPEG/PNG/GIF (auto)
-function legacyToAvif(input: ConvertInput): ConvertOutput   // JPEG/PNG → AVIF
-function avifToLegacy(input: ConvertInput): ConvertOutput   // AVIF → JPEG/PNG (auto)
+function legacyToAvif(input: ConvertInput): ConvertOutput   // JPEG/PNG → AVIF [Experimental]
+function avifToLegacy(input: ConvertInput): ConvertOutput   // AVIF → JPEG/PNG (auto) [Experimental]
 ```
 
 All functions throw `NextImageError` on failure.
