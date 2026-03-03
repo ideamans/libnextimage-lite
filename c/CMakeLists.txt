@@ -276,6 +276,11 @@ target_link_libraries(nextimage_shared PUBLIC webp webpdemux libwebpmux sharpyuv
 # システムライブラリを静的リンク（libnextimage.aに含める）
 target_link_libraries(nextimage PUBLIC ${JPEG_LIBRARY} ${PNG_LIBRARY} ${Z_LIBRARY})
 
+# Linux: libpng requires libm (math library) for pow() etc.
+if(UNIX AND NOT APPLE)
+    target_link_libraries(nextimage PUBLIC m)
+endif()
+
 # 動的ライブラリのシステムライブラリリンク
 # Linux: システムの共有ライブラリを使用（静的ライブラリはPICなしでコンパイルされている）
 # macOS/Windows: 静的ライブラリを使用可能
