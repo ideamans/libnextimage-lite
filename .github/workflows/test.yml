@@ -8,11 +8,10 @@ on:
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
-  # Build C library from source (all branches)
+  # Build C library from source
   build-c-library:
     name: Build C Library (${{ matrix.os }})
     strategy:
-      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -44,14 +43,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake build-essential libjpeg-dev libpng-dev libgif-dev imagemagick nasm
 
+      - name: Setup NASM (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/setup-nasm@v1
+
       - name: Setup MSYS2
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
           update: true
+          path-type: inherit
           install: >-
-            git
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-cmake
             mingw-w64-ucrt-x86_64-make
@@ -61,37 +64,16 @@ jobs:
             mingw-w64-ucrt-x86_64-libwebp
             mingw-w64-ucrt-x86_64-imagemagick
 
-      - name: Pre-clone AOM source (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          for i in 1 2 3; do
-            git clone -b v3.12.1 --depth 1 https://aomedia.googlesource.com/aom /tmp/aom-source && break
-            echo "Attempt $i failed, retrying in 10s..."
-            rm -rf /tmp/aom-source
-            sleep 10
-          done
-
-      - name: Pre-clone AOM source (Windows)
-        if: runner.os == 'Windows'
-        shell: msys2 {0}
-        run: |
-          for i in 1 2 3; do
-            git clone -b v3.12.1 --depth 1 https://aomedia.googlesource.com/aom /tmp/aom-source && break
-            echo "Attempt $i failed, retrying in 10s..."
-            rm -rf /tmp/aom-source
-            sleep 10
-          done
-
       - name: Build C library (Unix)
         if: runner.os != 'Windows'
         run: |
-          CMAKE_EXTRA_ARGS="-DFETCHCONTENT_SOURCE_DIR_LIBAOM=/tmp/aom-source" bash scripts/build-c-library.sh
+          bash scripts/build-c-library.sh
 
       - name: Build C library (Windows - MSYS2)
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
-          CMAKE_EXTRA_ARGS="-DFETCHCONTENT_SOURCE_DIR_LIBAOM=/tmp/aom-source -DAOM_TARGET_CPU=generic" bash scripts/build-c-library.sh
+          bash scripts/build-c-library.sh
 
       - name: Build C tests (Unix)
         if: runner.os != 'Windows'
@@ -132,17 +114,6 @@ jobs:
         run: |
           bash scripts/generate-test-images.sh
 
-      - name: Copy libraries to Go/TypeScript modules (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          make copy-libs-local
-
-      - name: Copy libraries to Go/TypeScript modules (Windows)
-        if: runner.os == 'Windows'
-        shell: msys2 {0}
-        run: |
-          make copy-libs-local
-
       - name: Cache C library artifacts
         uses: actions/cache/save@v3
         with:
@@ -150,8 +121,6 @@ jobs:
             lib/
             c/build/
             testdata/
-            golang/shared/
-            typescript/lib/
           key: c-library-${{ matrix.os }}-${{ matrix.arch }}-${{ github.sha }}
 
       - name: Dump build logs (on failure - Unix)
@@ -205,7 +174,6 @@ jobs:
     name: Go Tests (${{ matrix.os }})
     needs: build-c-library
     strategy:
-      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -234,8 +202,6 @@ jobs:
             lib/
             c/build/
             testdata/
-            golang/shared/
-            typescript/lib/
           key: c-library-${{ matrix.os }}-${{ matrix.arch }}-${{ github.sha }}
           fail-on-cache-miss: true
 
@@ -304,7 +270,6 @@ jobs:
     name: TypeScript Tests (${{ matrix.os }})
     needs: build-c-library
     strategy:
-      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -337,8 +302,6 @@ jobs:
             lib/
             c/build/
             testdata/
-            golang/shared/
-            typescript/lib/
           key: c-library-${{ matrix.os }}-${{ matrix.arch }}-${{ github.sha }}
           fail-on-cache-miss: true
 
