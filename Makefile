@@ -37,7 +37,7 @@ test-c: build-c
 test-compat: build-c
 	@echo "Running CLI compatibility tests (binary exact match)..."
 	@echo "Prerequisites: run 'scripts/build-cli-tools.sh' first"
-	@cd c/build && $(MAKE) cwebp_compat_test dwebp_compat_test gif2webp_compat_test avifenc_compat_test avifdec_compat_test
+	@cd c/build && $(MAKE) cwebp_compat_test dwebp_compat_test gif2webp_compat_test avifenc_compat_test avifdec_compat_test light_compat_test
 	@echo ""
 	@echo "=== cwebp compat ==="
 	@cd c/build && ./cwebp_compat_test
@@ -53,6 +53,9 @@ test-compat: build-c
 	@echo ""
 	@echo "=== avifdec compat ==="
 	@cd c/build && ./avifdec_compat_test
+	@echo ""
+	@echo "=== light API compat ==="
+	@cd c/build && ./light_compat_test
 	@echo ""
 	@echo "All CLI compatibility tests completed"
 

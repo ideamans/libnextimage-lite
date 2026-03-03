@@ -714,6 +714,77 @@ static void test_cwebp_jpeg_input(void) {
 }
 
 /* ============================================
+ * テストケース: Metadata ICC
+ * ============================================ */
+static void test_cwebp_metadata_icc(void) {
+    printf("\n=== cwebp Metadata ICC Tests ===\n");
+
+    struct {
+        const char* name;
+        const char* file;
+        int lossless;
+        float quality;
+    } cases[] = {
+        {"icc-srgb-jpg",       "icc/srgb.jpg",        0, 80},
+        {"icc-display-p3-jpg", "icc/display-p3.jpg",   0, 80},
+        {"icc-no-icc-jpg",     "icc/no-icc.jpg",       0, 80},
+        {"icc-srgb-png",       "icc/srgb.png",        1, 0},
+        {"icc-display-p3-png", "icc/display-p3.png",   1, 0},
+        {"icc-no-icc-png",     "icc/no-icc.png",       1, 0},
+    };
+    int num_cases = sizeof(cases) / sizeof(cases[0]);
+
+    for (int i = 0; i < num_cases; i++) {
+        char input_path[512];
+        snprintf(input_path, sizeof(input_path), "%s/%s", TESTDATA_DIR, cases[i].file);
+
+        size_t input_size;
+        uint8_t* input_data = read_file(input_path, &input_size);
+        if (!input_data) {
+            printf("  [SKIP] Cannot read: %s\n", input_path);
+            tests_skipped++;
+            continue;
+        }
+
+        /* CLI: cwebp -metadata icc [-q 80 | -lossless] input -o output */
+        char args[128];
+        if (cases[i].lossless) {
+            snprintf(args, sizeof(args), "-metadata icc -lossless");
+        } else {
+            snprintf(args, sizeof(args), "-metadata icc -q %.0f", cases[i].quality);
+        }
+        char output_path[512];
+        snprintf(output_path, sizeof(output_path), "%s/cmd/%s.webp", TEMP_DIR, cases[i].name);
+        size_t cli_size;
+        uint8_t* cli_output = run_cwebp_cli(input_path, args, output_path, &cli_size);
+
+        /* Library: keep_metadata = CWEBP_METADATA_ICC */
+        CWebPOptions* opts = cwebp_create_default_options();
+        opts->keep_metadata = CWEBP_METADATA_ICC;
+        if (cases[i].lossless) {
+            opts->lossless = 1;
+        } else {
+            opts->quality = cases[i].quality;
+        }
+        size_t lib_size;
+        uint8_t* lib_output = run_cwebp_lib(input_data, input_size, opts, &lib_size);
+        cwebp_free_options(opts);
+
+        if (cli_output && lib_output) {
+            compare_outputs(cases[i].name, cli_output, cli_size, lib_output, lib_size);
+        } else {
+            tests_run++;
+            tests_failed++;
+            printf("  [FAIL] %s: encode failed\n", cases[i].name);
+        }
+
+        free(cli_output);
+        free(lib_output);
+        free(input_data);
+    }
+}
+
+/* ============================================
  * main
  * ============================================ */
 int main(void) {
@@ -746,6 +817,7 @@ int main(void) {
     test_cwebp_pass();
     test_cwebp_combinations();
     test_cwebp_jpeg_input();
+    test_cwebp_metadata_icc();
 
     printf("\n================================================\n");
     printf("Results: %d tests, %d passed, %d failed, %d skipped\n",

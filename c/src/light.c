@@ -135,6 +135,8 @@ NextImageStatus nextimage_lite_legacy_to_webp(const NextImageLiteInput* input, N
             return output->status;
         }
 
+        opts->keep_metadata = CWEBP_METADATA_ICC;  // ICC プロファイルを保持
+
         if (type == IMG_TYPE_PNG) {
             // PNG -> lossless WebP
             opts->lossless = 1;
@@ -142,6 +144,8 @@ NextImageStatus nextimage_lite_legacy_to_webp(const NextImageLiteInput* input, N
             // JPEG -> lossy WebP with quality
             if (input->quality >= 0 && input->quality <= 100) {
                 opts->quality = (float)input->quality;
+            } else {
+                opts->quality = 80.0f;  // デフォルト quality: 80
             }
         }
 

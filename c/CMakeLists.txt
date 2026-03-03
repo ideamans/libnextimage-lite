@@ -677,3 +677,8 @@ add_test(NAME AVIFEncCompatTest COMMAND avifenc_compat_test)
 add_executable(avifdec_compat_test test/avifdec_compat_test.c)
 target_link_libraries(avifdec_compat_test nextimage)
 add_test(NAME AVIFDecCompatTest COMMAND avifdec_compat_test)
+
+# Light API CLI互換性テスト (legacyToWebp バイナリ透過)
+add_executable(light_compat_test test/light_compat_test.c)
+target_link_libraries(light_compat_test nextimage)
+add_test(NAME LightCompatTest COMMAND light_compat_test)

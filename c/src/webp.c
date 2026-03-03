@@ -12,6 +12,7 @@
 
 // imageio headers for reading JPEG/PNG/etc
 #include "image_dec.h"
+#include "metadata.h"
 
 // giflib header
 #include <gif_lib.h>
@@ -312,6 +313,176 @@ static int webp_memory_writer(const uint8_t* data, size_t data_size, const WebPP
     return 1;
 }
 
+// ========================================
+// Memory-based WebP metadata writing helpers
+// (port of WriteWebPWithMetadata from cwebp.c to memory buffers)
+// ========================================
+
+static int buf_append(NextImageBuffer* buf, const uint8_t* data, size_t size) {
+    size_t new_size = buf->size + size;
+    uint8_t* new_data = (uint8_t*)nextimage_realloc(buf->data, new_size);
+    if (!new_data) return 0;
+    memcpy(new_data + buf->size, data, size);
+    buf->data = new_data;
+    buf->size = new_size;
+    return 1;
+}
+
+static int buf_write_le(NextImageBuffer* buf, uint32_t val, int num) {
+    uint8_t tmp[4];
+    for (int i = 0; i < num; ++i) {
+        tmp[i] = (uint8_t)(val & 0xff);
+        val >>= 8;
+    }
+    return buf_append(buf, tmp, num);
+}
+
+static int buf_write_le32(NextImageBuffer* buf, uint32_t val) {
+    return buf_write_le(buf, val, 4);
+}
+
+static int buf_write_le24(NextImageBuffer* buf, uint32_t val) {
+    return buf_write_le(buf, val, 3);
+}
+
+static int buf_write_metadata_chunk(NextImageBuffer* buf, const char fourcc[4],
+                                    const MetadataPayload* payload) {
+    const uint8_t zero = 0;
+    const size_t need_padding = payload->size & 1;
+    int ok = buf_append(buf, (const uint8_t*)fourcc, 4);
+    ok = ok && buf_write_le32(buf, (uint32_t)payload->size);
+    ok = ok && buf_append(buf, payload->bytes, payload->size);
+    if (need_padding) {
+        ok = ok && buf_append(buf, &zero, 1);
+    }
+    return ok;
+}
+
+// Metadata flag constants (matching cwebp.c)
+enum {
+    META_FLAG_EXIF = (1 << 0),
+    META_FLAG_ICC  = (1 << 1),
+    META_FLAG_XMP  = (1 << 2)
+};
+
+// Write WebP with metadata to memory buffer.
+// Mirrors cwebp.c WriteWebPWithMetadata() but outputs to NextImageBuffer.
+// webp/webp_size: raw encoded WebP data (will be freed by caller)
+// Returns 1 on success, 0 on failure. On success, result is in *out.
+static int write_webp_with_metadata_buf(
+    const WebPPicture* picture,
+    const uint8_t* webp, size_t webp_size,
+    const Metadata* metadata,
+    int keep_metadata,
+    NextImageBuffer* out
+) {
+    const char kVP8XHeader[] = "VP8X\x0a\x00\x00\x00";
+    const int kAlphaFlag = 0x10;
+    const int kEXIFFlag  = 0x08;
+    const int kICCPFlag  = 0x20;
+    const int kXMPFlag   = 0x04;
+    const size_t kRiffHeaderSize = 12;
+    const size_t kChunkHeaderSize = 8;
+    const size_t kTagSize = 4;
+    const size_t kMaxChunkPayload = ~(size_t)0 - kChunkHeaderSize - 1;
+    const size_t kMinSize = kRiffHeaderSize + kChunkHeaderSize;
+
+    uint32_t flags = 0;
+    uint64_t metadata_size = 0;
+    int write_exif = 0, write_iccp = 0, write_xmp = 0;
+
+    if ((keep_metadata & META_FLAG_EXIF) && metadata->exif.bytes && metadata->exif.size > 0) {
+        write_exif = 1;
+        flags |= kEXIFFlag;
+        metadata_size += kChunkHeaderSize + metadata->exif.size + (metadata->exif.size & 1);
+    }
+    if ((keep_metadata & META_FLAG_ICC) && metadata->iccp.bytes && metadata->iccp.size > 0) {
+        write_iccp = 1;
+        flags |= kICCPFlag;
+        metadata_size += kChunkHeaderSize + metadata->iccp.size + (metadata->iccp.size & 1);
+    }
+    if ((keep_metadata & META_FLAG_XMP) && metadata->xmp.bytes && metadata->xmp.size > 0) {
+        write_xmp = 1;
+        flags |= kXMPFlag;
+        metadata_size += kChunkHeaderSize + metadata->xmp.size + (metadata->xmp.size & 1);
+    }
+
+    memset(out, 0, sizeof(*out));
+
+    if (webp_size < kMinSize) return 0;
+    if (webp_size - kChunkHeaderSize + metadata_size > kMaxChunkPayload) return 0;
+
+    if (metadata_size == 0) {
+        // No metadata to write, just copy original
+        out->data = (uint8_t*)nextimage_malloc(webp_size);
+        if (!out->data) return 0;
+        memcpy(out->data, webp, webp_size);
+        out->size = webp_size;
+        return 1;
+    }
+
+    const int kVP8XChunkSize = 18;
+    const uint8_t* p = webp;
+    size_t remaining = webp_size;
+
+    const int has_vp8x = !memcmp(p + kRiffHeaderSize, "VP8X", kTagSize);
+    const uint32_t riff_size = (uint32_t)(webp_size - kChunkHeaderSize +
+                                          (has_vp8x ? 0 : kVP8XChunkSize) +
+                                          metadata_size);
+
+    // RIFF tag
+    int ok = buf_append(out, p, kTagSize);
+    // RIFF size
+    ok = ok && buf_write_le32(out, riff_size);
+    p += kChunkHeaderSize;
+    remaining -= kChunkHeaderSize;
+    // WEBP tag
+    ok = ok && buf_append(out, p, kTagSize);
+    p += kTagSize;
+    remaining -= kTagSize;
+
+    if (has_vp8x) {
+        // Update existing VP8X flags - copy the chunk, then patch flags byte
+        uint8_t vp8x_chunk[18];
+        memcpy(vp8x_chunk, p, kVP8XChunkSize);
+        vp8x_chunk[kChunkHeaderSize] |= (uint8_t)(flags & 0xff);
+        ok = ok && buf_append(out, vp8x_chunk, kVP8XChunkSize);
+        p += kVP8XChunkSize;
+        remaining -= kVP8XChunkSize;
+    } else {
+        const int is_lossless = !memcmp(p, "VP8L", kTagSize);
+        if (is_lossless) {
+            if (p[kChunkHeaderSize + 4] & (1 << 4)) flags |= kAlphaFlag;
+        }
+        ok = ok && buf_append(out, (const uint8_t*)kVP8XHeader, kChunkHeaderSize);
+        ok = ok && buf_write_le32(out, flags);
+        ok = ok && buf_write_le24(out, picture->width - 1);
+        ok = ok && buf_write_le24(out, picture->height - 1);
+    }
+
+    // ICCP chunk (before image data)
+    if (write_iccp) {
+        ok = ok && buf_write_metadata_chunk(out, "ICCP", &metadata->iccp);
+    }
+    // Image data
+    ok = ok && buf_append(out, p, remaining);
+    // EXIF chunk (after image data)
+    if (write_exif) {
+        ok = ok && buf_write_metadata_chunk(out, "EXIF", &metadata->exif);
+    }
+    // XMP chunk (after image data)
+    if (write_xmp) {
+        ok = ok && buf_write_metadata_chunk(out, "XMP ", &metadata->xmp);
+    }
+
+    if (!ok) {
+        nextimage_free(out->data);
+        out->data = NULL;
+        out->size = 0;
+    }
+    return ok;
+}
+
 // エンコード実装（画像ファイルデータから）
 NextImageStatus nextimage_webp_encode_alloc(
     const uint8_t* input_data,
@@ -361,11 +532,18 @@ NextImageStatus nextimage_webp_encode_alloc(
     picture.use_argb = (config.lossless || config.use_sharp_yuv ||
                         config.preprocessing > 0);
 
-    // 画像を読み込む（keep_alpha=1, metadata=NULL）
+    // メタデータ構造体（keep_metadata > 0 の場合のみ使用）
+    Metadata metadata;
+    MetadataInit(&metadata);
+    int has_metadata = (options && options->keep_metadata > 0);
+
+    // 画像を読み込む（keep_alpha=1, metadata=NULLまたは&metadata）
     // noalpha オプションが有効な場合は keep_alpha=0 で読み込む
     int keep_alpha = (options && options->noalpha) ? 0 : 1;
-    if (!reader(input_data, input_size, &picture, keep_alpha, NULL)) {
+    if (!reader(input_data, input_size, &picture, keep_alpha,
+                has_metadata ? &metadata : NULL)) {
         WebPPictureFree(&picture);
+        MetadataFree(&metadata);
         nextimage_set_error("Failed to read input image");
         return NEXTIMAGE_ERROR_DECODE_FAILED;
     }
@@ -378,6 +556,7 @@ NextImageStatus nextimage_webp_encode_alloc(
             if (!WebPPictureCrop(&picture, options->crop_x, options->crop_y,
                                  options->crop_width, options->crop_height)) {
                 WebPPictureFree(&picture);
+                MetadataFree(&metadata);
                 nextimage_set_error("Crop failed (invalid crop dimensions)");
                 return NEXTIMAGE_ERROR_INVALID_PARAM;
             }
@@ -402,6 +581,7 @@ NextImageStatus nextimage_webp_encode_alloc(
             if (should_resize) {
                 if (!WebPPictureRescale(&picture, options->resize_width, options->resize_height)) {
                     WebPPictureFree(&picture);
+                    MetadataFree(&metadata);
                     nextimage_set_error("Resize failed");
                     return NEXTIMAGE_ERROR_ENCODE_FAILED;
                 }
@@ -423,6 +603,7 @@ NextImageStatus nextimage_webp_encode_alloc(
     // エンコード
     if (!WebPEncode(&config, &picture)) {
         WebPPictureFree(&picture);
+        MetadataFree(&metadata);
         if (output->data) {
             nextimage_free(output->data);
             output->data = NULL;
@@ -432,7 +613,21 @@ NextImageStatus nextimage_webp_encode_alloc(
         return NEXTIMAGE_ERROR_ENCODE_FAILED;
     }
 
+    // メタデータ埋め込み (keep_metadata > 0 かつメタデータが存在する場合)
+    // picture.width/height are still valid after WebPEncode (only pixel data is freed by encode)
+    if (has_metadata && (metadata.iccp.size > 0 || metadata.exif.size > 0 || metadata.xmp.size > 0)) {
+        NextImageBuffer meta_output;
+        if (write_webp_with_metadata_buf(&picture, output->data, output->size,
+                                          &metadata, options->keep_metadata,
+                                          &meta_output)) {
+            nextimage_free(output->data);
+            output->data = meta_output.data;
+            output->size = meta_output.size;
+        }
+    }
+
     WebPPictureFree(&picture);
+    MetadataFree(&metadata);
     return NEXTIMAGE_OK;
 }
 
